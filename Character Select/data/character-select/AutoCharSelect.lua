@@ -1,9 +1,9 @@
--- V2.5
+-- V2.5.1
 -- script made by camlikeskirby (Username on a lot of sites)
 -- Now this script is only in one song while the CharacterLoader.lua does all the character setting stuff
 
 -- Easily Editable:
-local modNames = {'Character Select'}
+local modNames = {'Character Select', '1My Character Pack'}
 local blockedCharacters = {'bf-pixel', 'bf-pixel-opponent', 'darnell-blazin', 'nene', 'pico-blazin', 'pico-speaker', 'senpai', 'senpai-angry', 'spirit', 'gf'}
 local blockedCharactersGF = {'nene', 'pico-speaker', 'gf-pixel'}
 
@@ -317,7 +317,7 @@ triggerEvent("Change Character", bAndGCharacterNumber[bfOrGf], bAndGChars[bfOrGf
 if bfOrGf == 1 then cameraSetTarget("boyfriend") else triggerEvent('Camera Follow Pos',getMidpointX('gf')+getProperty('gf.cameraPosition[0]'),getMidpointY('gf')+getProperty('gf.cameraPosition[1]')) end
 end
 
-for i = 1,#bAndGChars[1],1 do 
+for i = 1,#bAndGChars[bfOrGf],1 do 
     if bAndGNums[bfOrGf] == i then
     setTextColor(i..bfOrGf..'TEXT', 'yellow')  
     else
