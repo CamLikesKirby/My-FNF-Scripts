@@ -1,0 +1,7 @@
+Look in data/Character Select to find the lua file.
+
+To load a certain mod pack besides the character select and the characters in mods/characters, just add it in the "modNames" array!
+
+(Also make sure the mod is set to global in the pack.json)
+
+For adding GF characters make sure to put "gf-" at the start of the json!

@@ -1,0 +1,84 @@
+[
+{
+	"save": "bfChange",
+	"name": "BF Select",
+	"type": "bool",
+	"description": "The BF character will change",
+	"value": true
+},
+{
+	"save": "gfChange",
+	"name": "GF Select",
+	"type": "bool",
+	"description": "The GF character will change",
+	"value": true
+},
+{
+	"save": "moCh",
+	"name": "Mod Characters",
+	"type": "bool",
+	"description": "The Mod characters (from mods/characters) will be on the select screen",
+	"value": true
+},
+{
+	"save": "cCE",
+	"name": "Remove Change Character Event",
+	"type": "bool",
+	"description": "The Change Character Event will not work if a bf skin is on.",
+	"value": true
+},
+{
+	"save": "cCEGF",
+	"name": "Remove Change Character Event (GF)",
+	"type": "bool",
+	"description": "The Change Character Event will not work if a gf skin is on.",
+	"value": true
+},
+{
+	"save": "baCh",
+	"name": "Base Characters",
+	"type": "bool",
+	"description": "The Base Game characters will be on the select screen",
+	"value": false
+},
+{
+
+	"save": "baChgf",
+	"name": "Base Characters (GF)",
+	"type": "bool",
+	"description": "The Base Game characters for GF will be on the select screen",
+	"value": false
+},
+{
+	"save": "lcwC",
+	"name": "Load Characters with C",
+	"type": "bool",
+	"description": "Makes it when your in the character select you have to press c to see the character your choosing. This can save a LOT of memory. (btw it loads the character in when you exit out of the character select)",
+	"value": false
+},
+{
+	
+	"save": "pload",
+	"name": "Preload Characters",
+	"type": "bool",
+	"description": "Preloads ALL the the characters in the character select but might use a lot of memory",
+	"value": false
+
+},
+{
+	"save": "ploadgf",
+	"name": "Preload Characters (GF)",
+	"type": "bool",
+	"description": "Preloads ALL the the characters for GF in the character select but might use a lot of memory",
+	"value": false
+
+},
+{
+	"save": "gfunlocked",
+	"name": "Any Partner",
+	"type": "bool",
+	"description": "Makes it so it doesn't just take the jsons that have \"gf-\" at the start of the file name",
+	"value": false
+}
+
+]
