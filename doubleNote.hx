@@ -11,9 +11,11 @@ var ghostCount:Int = 0;
 var settings = {
 // The settings
 ghostLimit: 20,
-animated: true,
-ghostMoves: false,
-ghostSustains: false
+animated: false,
+ghostMoves: true,
+ghostSustains: true,
+coloredGhosts: true,
+tryToFixGhostDir: false
 }
 
 var bfStuffs = {
@@ -57,7 +59,7 @@ if (stuffs.lastNote == n.strumTime) {
     var length:Int = stuffs.lastTailLength;
 
     // To fix the ghost playing the wrong animation (Sometimes it doesn't work but I'm keeping it like this for now)
-    if ((stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote && n.tail.length != stuffs.lastTailLength) || (stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote)) {
+    if ((stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote && n.tail.length != stuffs.lastTailLength) || (stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote) && settings.tryToFixGhostDir) {
     stuffs.lastNoteData = n.noteData;
     stuffs.lastNoteDir = theCharNeeded.getAnimationName();
     length = n.tail.length;
@@ -81,7 +83,7 @@ function makeGhost(char:Character, animToPlay:String, noteData:Int, swagNote:Boo
 
     ghostCount = ghostCount + 1;
     var trail = new Character(char.x, char.y, char.curCharacter, (char == boyfriend) ? true : false);
-    trail.color = char.color;
+   if (!settings.coloredGhosts) trail.color = char.color; else trail.color = getIconColor(char);
     trail.scale.set(char.scale.x, char.scale.y);
     trail.holdTimer = 0;
     trail.alpha = char.alpha;
@@ -131,4 +133,17 @@ try { // to prevent annoying error pop ups at the end of songs.
 if (PlayState.SONG.notes[curSection].gfSection) inGFSection = true;
 else inGFSection = false;
 } catch (e:Dynamic) inGFSection = false;
+}
+
+function getIconColor(chr:Character) {
+    return switch(chr) {
+    case dad: FlxColor.fromString('#' + rgbToHex(game.dad.healthColorArray));
+    case boyfriend: FlxColor.fromString('#' + rgbToHex(game.boyfriend.healthColorArray));
+    case gf: FlxColor.fromString('#' + rgbToHex(game.gf.healthColorArray));
+    default: FlxColor.fromString('#' + rgbToHex(game.dad.healthColorArray));
+    }
+}
+
+function rgbToHex(array:Array<Int>):String {
+    return StringTools.hex((array[0] << 16) | (array[1] << 8) | array[2], 6);
 }
