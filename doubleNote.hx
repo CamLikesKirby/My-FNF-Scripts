@@ -14,8 +14,7 @@ ghostLimit: 20,
 animated: false,
 ghostMoves: true,
 ghostSustains: true,
-coloredGhosts: true,
-tryToFixGhostDir: false
+coloredGhosts: true
 }
 
 var bfStuffs = {
@@ -57,13 +56,6 @@ else stuffs = bfStuffs;
 if (stuffs.lastNote == n.strumTime) {
     var tailLength:Bool = n.sustainLength >= 150;
     var length:Int = stuffs.lastTailLength;
-
-    // To fix the ghost playing the wrong animation (Sometimes it doesn't work but I'm keeping it like this for now)
-    if ((stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote && n.tail.length != stuffs.lastTailLength) || (stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote) && settings.tryToFixGhostDir) {
-    stuffs.lastNoteData = n.noteData;
-    stuffs.lastNoteDir = theCharNeeded.getAnimationName();
-    length = n.tail.length;
-    } 
 
     if (length == 0 || length == null) length = .55;
     makeGhost(theCharNeeded, stuffs.lastNoteDir, stuffs.lastNoteData, stuffs.lastSwagNote, length);
