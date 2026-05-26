@@ -1,0 +1,17 @@
+[
+{
+"save": "System",
+"name": "Systems",
+"type": "string",
+"description": "Different systems you can use based on prefence.",
+"value": "Randomized",
+"options": ["Complex", "Simple", "Accuracy Based", "Rating Based"]
+},
+{
+"save": "isSus",
+"name": "Sustain Notes Counting",
+"type": "bool",
+"description": "If turned off, all sustain notes will not be counted as hits. (Recommended to turn this off if \"Sustains as One Note\" is on)",
+"value": true
+}
+]

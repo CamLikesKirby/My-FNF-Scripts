@@ -1,0 +1,59 @@
+[
+{
+"save": "MarathonM",
+"name": "Marathon Mode",
+"type": "string",
+"description": "",
+"value": "Randomized",
+"options": ["Alphabetical", "Randomized"]
+},
+{
+"save": "allMods",
+"name": "All Mod Packs",
+"type": "bool",
+"description": "Makes it so you play through all your ENABLED modpacks' songs. (WARNING: Some things may break.)",
+"value": false
+},
+{
+"save": "IBG",
+"name": "(All Mod Packs) Include Base Game",
+"type": "bool",
+"description": "Makes it so the Base Game in conluded when you turn on the All Mod Packs option.",
+"value": false
+},
+{
+"save": "autoOneDiff",
+"name": "Auto Select",
+"type": "bool",
+"description": "If a song has only one difficulty it will automatically play.",
+"value": true
+},
+{
+"save": "firstSongChoice",
+"name": "First Song Played",
+"type": "bool",
+"description": "The song you selected is played first.",
+"value": false
+},
+{
+"save": "endless",
+"name": "Endless Mode",
+"type": "bool",
+"description": "Makes it so the Marathon will never end.",
+"value": false
+},
+{
+"save": "mSAST",
+"name": "Marathon Score Above Score Text",
+"type": "bool",
+"description": "",
+"value": false
+},
+{
+"save": "hST",
+"name": "Hide Original Score Text",
+"type": "bool",
+"description": "",
+"value": true
+}
+]

@@ -1,0 +1,9 @@
+{
+	"name": "Kirby Hud",
+	"description": "Huds from kirby games",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [255, 161, 230],
+	"discordRPC": "863222024192262205",
+	"iconFramerate": 10
+}

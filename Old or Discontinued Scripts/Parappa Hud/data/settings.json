@@ -1,0 +1,42 @@
+[
+{
+
+	    "save": "sN",
+		"name": "Squeak Noises",
+		"type": "bool",
+		"description": "bad and awful noises",
+		"value": true
+    },
+	{
+
+	    "save": "pSH",
+		"name": "Parappa Score Hidden",
+		"type": "bool",
+		"description": "self explanatory",
+		"value": false
+    },
+	{
+
+		"save": "sH",
+		"name": "Score Hidden",
+		"type": "bool",
+		"description": "self explanatory",
+		"value": true
+    },
+	{
+		
+		"save": "iH",
+		"name": "Icons Hidden",
+		"type": "bool",
+		"description": "self explanatory",
+		"value": true
+	},
+	{
+		"save": "rE",
+		"name": "Rating Effects",
+		"type": "bool",
+		"description": "if you want the rating effects ",
+		"value": true
+	}
+
+]

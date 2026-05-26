@@ -1,0 +1,9 @@
+{
+	"name": "Wega",
+	"description": "Wega Jumpscare when you pause fast enough",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [170, 0, 255],
+	"discordRPC": "863222024192262205",
+	"iconFramerate": 10
+}

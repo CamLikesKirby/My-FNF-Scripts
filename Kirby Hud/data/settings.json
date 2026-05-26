@@ -1,0 +1,26 @@
+[
+	{
+	
+		"save": "gameboykirby",
+		"name": "Kirby's Dream Land Hud",
+		"type": "bool",
+		"description": "The hud from Kirby's Dream Land",
+		"value": false
+	
+},
+{
+
+	"save": "gameboyAlpha",
+	"name": "KDL Hud Opacity",
+	"type": "int", 
+	"description": "How transparent the white background of the hud is",
+	"value": 100,
+
+	"min": 0,
+	"max": 100,
+	"step": 10,
+	"decimals": 0,
+	"scroll": 10
+}
+	
+]

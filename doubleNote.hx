@@ -1,0 +1,134 @@
+// OG SCRIPT BY: BFDI 26 DEVS MODIFIED BY: camlikeskirby
+// This is some messy code and can prob be shortend but it works.
+
+import states.PlayState;
+
+using StringTools;
+
+var inGFSection:Bool = false;
+var ghostCount:Int = 0;
+
+var settings = {
+// The settings
+ghostLimit: 20,
+animated: true,
+ghostMoves: false,
+ghostSustains: false
+}
+
+var bfStuffs = {
+lastNote: null,
+lastNoteDir: "",
+lastNoteData: 0,
+lastSwagNote: false,
+lastTailLength: 0
+}
+
+var opStuffs = {
+lastNote: null,
+lastNoteDir: "",
+lastNoteData: 0,
+lastSwagNote: false,
+lastTailLength: 0
+}
+
+function goodNoteHit(n) {
+    if (n.isSustainNote) return;
+    calcalateInfo(n, boyfriend);
+}
+
+
+
+function opponentNoteHit(n) {
+    if (n.isSustainNote) return;
+    calcalateInfo(n, dad);
+}
+
+function calcalateInfo(n:Note, character:Dynamic) {
+var stuffs:Dynamic = null;
+var isGF:Bool = (n.gfNote) || inGFSection;
+var theCharNeeded:Dynamic = isGF ? gf : character;
+
+if (character == dad) stuffs = opStuffs; 
+else stuffs = bfStuffs;
+
+if (stuffs.lastNote == n.strumTime) {
+    var tailLength:Bool = n.sustainLength >= 150;
+    var length:Int = stuffs.lastTailLength;
+
+    // To fix the ghost playing the wrong animation (Sometimes it doesn't work but I'm keeping it like this for now)
+    if ((stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote && n.tail.length != stuffs.lastTailLength) || (stuffs.lastSwagNote && !tailLength && n.noteData != stuffs.lastSwagNote)) {
+    stuffs.lastNoteData = n.noteData;
+    stuffs.lastNoteDir = theCharNeeded.getAnimationName();
+    length = n.tail.length;
+    } 
+
+    if (length == 0 || length == null) length = .55;
+    makeGhost(theCharNeeded, stuffs.lastNoteDir, stuffs.lastNoteData, stuffs.lastSwagNote, length);
+    } else {
+    stuffs.lastNote = n.strumTime;
+    stuffs.lastNoteDir = theCharNeeded.getAnimationName();
+    stuffs.lastNoteData = n.noteData;
+    if (n.tail.length > 0 && settings.ghostSustains) stuffs.lastSwagNote = true;
+    else stuffs.lastSwagNote = false;
+    stuffs.lastTailLength = n.tail.length;
+    }
+}
+
+
+function makeGhost(char:Character, animToPlay:String, noteData:Int, swagNote:Bool, noteLength:Int){
+    if (ghostCount >= settings.ghostLimit || !char.visible || char.alpha == 0) return; // To prevent lag
+
+    ghostCount = ghostCount + 1;
+    var trail = new Character(char.x, char.y, char.curCharacter, (char == boyfriend) ? true : false);
+    trail.color = char.color;
+    trail.scale.set(char.scale.x, char.scale.y);
+    trail.holdTimer = 0;
+    trail.alpha = char.alpha;
+    if (char == boyfriend) addBehindBF(trail);
+    else if (char == dad) addBehindDad(trail);
+    else addBehindGF(trail);
+    trail.playAnim(animToPlay);
+ 
+    if (settings.ghostMoves) switch(noteData) // noteData works better because you don't have to rely on the animations for the effect
+	{
+	case 0:
+        FlxTween.tween(trail, {x: trail.x + -400}, 4, {ease: FlxEase.circOut});
+	case 1:
+        FlxTween.tween(trail, {y: trail.y + 400}, 4, {ease: FlxEase.circOut});
+	case 2:
+        FlxTween.tween(trail, {y: trail.y + -400}, 4, {ease: FlxEase.circOut});
+	case 3:
+        FlxTween.tween(trail, {x: trail.x + 400}, 4, {ease: FlxEase.circOut});
+    }
+    
+    if (!swagNote) {
+    FlxTween.tween(trail, {alpha: 0}, .55).onComplete = function() {
+    trail.kill();
+    remove(trail, true);
+    ghostCount = ghostCount - 1;
+    if (ghostCount < 0) ghostCount = 0;
+    };
+    } else {
+    if (noteLength != .55) noteLength = noteLength / 4.2;
+    FlxTween.tween(trail, {alpha: 0}, noteLength).onComplete = function() {
+    trail.kill();
+    remove(trail, true);
+    ghostCount = ghostCount - 1;
+    if (ghostCount < 0) ghostCount = 0;
+    };
+}
+  
+    if (settings.animated) {
+    trail.animation.finishCallback = (animationName:String)->{
+    trail.animation.frameName = trail.animation.frameName;
+    };
+    } else trail.animation.frameName = trail.animation.frameName;  // somehow this stops it from going into idle.
+}
+
+function onSectionHit() {
+try { // to prevent annoying error pop ups at the end of songs.
+if (PlayState.SONG.notes[curSection].gfSection) inGFSection = true;
+else inGFSection = false;
+} catch (e:Dynamic) inGFSection = false;
+}

@@ -1,0 +1,17 @@
+[
+{
+	"save": "autoRestart",
+	"name": "Restart Automatically",
+	"type": "bool",
+	"description": "If enabled, will make the game restart automatically on death.",
+	"value": true
+},
+{
+	"save": "mus",
+	"name": "Music",
+	"type": "bool",
+	"description": "If enabled, will play the very sad music on death.",
+	"value": true
+}
+
+]

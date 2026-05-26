@@ -1,0 +1,7 @@
+{
+	"name": "Memoriam",
+	"description": "",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [128,128,128]
+}

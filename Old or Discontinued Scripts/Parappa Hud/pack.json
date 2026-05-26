@@ -1,0 +1,7 @@
+{
+	"name": "Parappa Hud",
+	"description": "Handle it with eeeeeeeeeeeeeeeeeee",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [170, 0, 255]
+}

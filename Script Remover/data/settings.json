@@ -1,0 +1,23 @@
+[
+	{
+	"save": "removeScripts",
+	"name": "Remove Main Scripts",
+	"type": "bool",
+	"description": "Removes the scripts found in the \"scripts\" folder.",
+	"value": true
+	},
+    {
+    "save": "removeSongScripts",
+	"name": "Remove Song Scripts",
+	"type": "bool",
+	"description": "Removes the scripts found in the song data folder.",
+	"value": false
+	},
+    {
+	"save": "removeEvents",
+	"name": "Remove Events",
+	"type": "bool",
+	"description": "Removes events in the song.",
+	"value": false
+	}
+]

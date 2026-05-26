@@ -1,0 +1,7 @@
+{
+	"name": "Marathon Script",
+	"description": "A Script that compiles the base games'/mod folders' songs to make a marathon!.",
+	"restart":false,
+	"runsGlobally": true,
+	"color": [255, 255, 255]
+}

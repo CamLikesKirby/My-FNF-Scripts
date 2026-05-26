@@ -1,0 +1,56 @@
+[
+{
+
+	"save": "rhOn",
+		"name": "Raldi Hud",
+		"type": "bool",
+		"description": "If you want the Raldi Hud (Disable this if you have the Raldi Minigame Hud On)",
+		"value": false
+    },
+	{
+
+	"save": "rmgOn",
+		"name": "Raldi Minigame Hud",
+		"type": "bool",
+		"description": "If you want the Raldi Minigame Hud (Disable this if you have the Raldi Hud On)",
+		"value": false
+    },
+	{
+		
+		"save": "realScore",
+		"name": "Real Score",
+		"type": "bool",
+		"description": "Shows you the real score you get",
+		"value": false
+	},
+	{
+		"save": "realAcc",
+		"name": "Real Accuracy",
+		"type": "bool",
+		"description": "Shows you the Accuracy score you get",
+		"value": false
+	},
+	{
+		"save": "hideRatings",
+		"name": "Hide Ratings",
+		"type": "bool",
+		"description": "Hides the Ratings",
+		"value": true
+	},
+	{
+		"save": "hideTimeBar",
+		"name": "Hide Time Bar",
+		"type": "bool",
+		"description": "Hides the Time Bar (and text)",
+		"value": true
+	},
+	{
+		"save": "startFlash",
+		"name": "Start Flash",
+		"type": "bool",
+		"description": "Shows a flash at the start",
+		"value": false
+
+	}
+
+]
