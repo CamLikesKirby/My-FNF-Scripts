@@ -1,0 +1,64 @@
+[
+{
+	"save": "baCh",
+	"name": "Base Characters",
+	"type": "bool",
+	"description": "The Base Game characters will be on the select screen",
+	"value": false
+},
+{
+
+	"save": "baChgf",
+	"name": "Base Characters (GF)",
+	"type": "bool",
+	"description": "The Base Game characters for GF will be on the select screen",
+	"value": false
+},
+{
+	"save": "moCh",
+	"name": "Mod Characters",
+	"type": "bool",
+	"description": "The Mod characters (from mods/characters) will be on the select screen",
+	"value": true
+},
+{
+	"save": "lcwC",
+	"name": "Load Characters with C",
+	"type": "bool",
+	"description": "Makes it when your in the character select you have to press c to see the character your choosing. This can save a LOT of memory. (btw it loads the character in when you exit out of the character select)",
+	"value": false
+},
+{
+	
+	"save": "pload",
+	"name": "Preload Characters",
+	"type": "bool",
+	"description": "Preloads ALL the the characters in the character select but might use a lot of memory",
+	"value": false
+
+},
+{
+	"save": "ploadgf",
+	"name": "Preload Characters (GF)",
+	"type": "bool",
+	"description": "Preloads ALL the the characters for GF in the character select but might use a lot of memory",
+	"value": false
+
+},
+{
+	"save": "gfunlocked",
+	"name": "Any GF",
+	"type": "bool",
+	"description": "Makes it so it doesn't just take the jsons that have \"gf-\" at the start of the file name",
+	"value": false
+
+},
+{
+	"save": "sCF",
+	"name": "Saved Character First",
+	"type": "bool",
+	"description": "Makes it so it makes the Saved character first and not the orignal character",
+	"value": false
+}
+
+]

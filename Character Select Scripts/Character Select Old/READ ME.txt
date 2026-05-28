@@ -1,0 +1,3 @@
+For adding GF characters make sure to put "gf-" at the start of the json!
+
+ok you can delete this file now
