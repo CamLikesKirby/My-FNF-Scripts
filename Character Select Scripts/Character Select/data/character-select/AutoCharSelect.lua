@@ -53,7 +53,7 @@ function onCreatePost()
     addLuaText("charName")
 
     c = ''
-    if LoadCharacterswithC then c = ' Press C to load in the character.' end
+    if LoadCharacterswithC  and not isMobile then c = ' Press C to load in the character.' else if isMobile then c = ' Press up and down hitboxes/buttons to accept.' end end
     makeLuaText("controlsTxt", 'Use G and B to switch between the player and partner.'..c,0, -1, 700)
     setProperty('controlsTxt.borderSize', 1.25)
     setObjectCamera('controlsTxt','other')
@@ -109,10 +109,11 @@ function onUpdate()
 
   setTextString("charName", toptext.. animControls.. '\n' ..bAndGNums[bfOrGf].. '/'.. #bAndGChars[bfOrGf])
         
-  if keyJustPressed("RIGHT") then changeItem(1) end
-  if keyJustPressed("DOWN") then changeItem(5) end
-  if keyJustPressed("UP") then changeItem(-5) end
-  if keyJustPressed("LEFT") then changeItem(-1)end
+  if keyJustPressed("right") then changeItem(1) end
+  if keyJustPressed("down") and not keyJustPressed("up") then changeItem(5) end
+  if keyJustPressed("up") and not keyJustPressed("down") then changeItem(-5) end
+  if keyJustPressed("left") then changeItem(-1)end
+
 
     if bfOrGf == 1 then
         if keyboardJustPressed('D') then
@@ -288,7 +289,7 @@ for c = 1,#bAndGChars,1 do
     if count == 1 then currentY = currentY + 70 end
     name = 'gf' if c == 2 then name = 'bf' end
 
-    makeLuaText((#bAndGChars[c] + 1)..c..'TEXT', name..'swi', screenWidth, (70 * count) - 650, currentY)
+    makeLuaText((#bAndGChars[c] + 1)..c..'TEXT', name..'switch', screenWidth, (70 * count) - 650, currentY)
     setObjectCamera((#bAndGChars[c] + 1)..c..'TEXT',"other")
     setProperty((#bAndGChars[c] + 1)..c..'TEXT.borderSize', 1.25)
     setObjectOrder((#bAndGChars[c] + 1)..c..'TEXT', 1)

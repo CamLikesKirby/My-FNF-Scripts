@@ -1,5 +1,5 @@
--- V2.5.5
--- For Version 0.6.3
+-- V2.3.0
+-- For 0.6.3
 -- script made by camlikeskirby (Username on a lot of sites)
 -- Now this script is only in one song while the CharacterLoader.lua does all the character setting stuff
 
@@ -20,8 +20,9 @@ local LoadCharacterswithC = true
 local PreloadCharacters = false
 local PreloadCharactersGF = false
 local AnyGF = false
+local isMobile = buildTarget == 'android' or buildTarget == 'ios' or buildTarget == 'unknown'
 -- Don't touch unless you know what your doing!!
-
+local mobileOffset = 1
 -- BF and GF vars combined
 local bAndGChars = {{}, {}}
 local savebforgf = {'',''}
@@ -35,6 +36,7 @@ local thing = false
 local folders = ''
 
 function onCreatePost()
+    if not isMobile then mobileOffset = 0 end
     removeLuaScript(modsFolder..'Character Select/scripts/CharacterLoader.lua')
     setProperty('camHUD.alpha', 0)
     setProperty('dad.alpha', 0)
@@ -49,7 +51,7 @@ function onCreatePost()
     addLuaText("charName")
 
     c = ''
-    if LoadCharacterswithC then c = ' Press C to load in the character.' end
+      if LoadCharacterswithC and not isMobile then c = ' Press C to load in the character.' else if isMobile then c = ' Press up and down hitboxes/buttons to accept.' end end
     makeLuaText("controlsTxt", 'Use G and B to switch between the player and partner.'..c,0, -1, 700)
     setProperty('controlsTxt.borderSize', 1.25)
     setObjectCamera('controlsTxt','other')
@@ -87,13 +89,14 @@ function onUpdate()
   toptext = 'PLAYER'
   animControls = '\nD, F, J, K'
   if bfOrGf == 2 then toptext = 'PARTNER' animControls = '' end
+  if isMobile then animControls = '' end
 
   setTextString("charName", toptext.. animControls.. '\n' ..bAndGNums[bfOrGf].. '/'.. #bAndGChars[bfOrGf])
         
-  if keyboardJustPressed("RIGHT") then changeItem(1) end
-  if keyboardJustPressed("DOWN") then changeItem(5) end
-  if keyboardJustPressed("UP") then changeItem(-5) end
-  if keyboardJustPressed("LEFT") then changeItem(-1)end
+  if keyJustPressed("right") then changeItem(1) end
+  if keyJustPressed("down") and not keyJustPressed("up") then changeItem(5) end
+  if keyJustPressed("up") and not keyJustPressed("down") then changeItem(-5) end
+  if keyJustPressed("left") then changeItem(-1)end
 
     if bfOrGf == 1 then
         if keyboardJustPressed('D') then
@@ -113,33 +116,36 @@ function onUpdate()
         end
     end
 
-
         if keyboardJustPressed('C') and LoadCharacterswithC then
         triggerEvent("Change Character", bAndGCharacterNumber[bfOrGf], bAndGChars[bfOrGf][bAndGNums[bfOrGf]])
         if bfOrGf == 1 then cameraSetTarget("boyfriend") else triggerEvent('Camera Follow Pos',getMidpointX('gf')+getProperty('gf.cameraPosition[0]'),getMidpointY('gf')+getProperty('gf.cameraPosition[1]')) end
         end
 
-        if keyboardJustPressed('B') then
+        if keyboardJustPressed('B') or #bAndGChars[2] < bAndGNums[2] then
+        if isMobile then changeItem(1) end
         bfOrGf = 1
+        if isMobile then bAndGNums[2] = 1 end
         triggerEvent('Camera Follow Pos',nil,nil)
         cameraSetTarget("boyfriend")
         setProperty('gf.alpha', 0.3)
         setProperty('boyfriend.alpha', 1)
-        for i = 1,#bAndGChars[1],1 do setProperty(i..'1TEXT.visible', true) end
-        for i = 1,#bAndGChars[2],1 do setProperty(i..'2TEXT.visible', false) end
+        for i = 1,#bAndGChars[1] + mobileOffset,1 do setProperty(i..'1TEXT.visible', true) end
+        for i = 1,#bAndGChars[2] + mobileOffset,1 do setProperty(i..'2TEXT.visible', false) end
         end
             
-        if keyboardJustPressed('G') then
+        if keyboardJustPressed('G') or #bAndGChars[1] < bAndGNums[1] then
+        if isMobile then changeItem(1) end
         bfOrGf = 2
         triggerEvent('Camera Follow Pos',getMidpointX('gf')+getProperty('gf.cameraPosition[0]'),getMidpointY('gf')+getProperty('gf.cameraPosition[1]'))
         setProperty('boyfriend.alpha', 0.3)
         setProperty('gf.alpha', 1) 
-        for i = 1,#bAndGChars[1],1 do setProperty(i..'1TEXT.visible', false) end
-        for i = 1,#bAndGChars[2],1 do setProperty(i..'2TEXT.visible', true) end
+        for i = 1,#bAndGChars[1] + mobileOffset,1 do setProperty(i..'1TEXT.visible', false) end
+        for i = 1,#bAndGChars[2] + mobileOffset,1 do setProperty(i..'2TEXT.visible', true) end
         end
-    if keyboardJustPressed('ESCAPE') then exitSong(true) end
+        
+    if keyJustPressed('back') then exitSong(true) end
 
-    if keyJustPressed('accept') then
+    if keyJustPressed('accept') or (keyJustPressed("up") and keyJustPressed("down") and isMobile) then
     playSound('confirmMenu')
     cancelTimer("Dance")
     if not thing then
@@ -148,8 +154,8 @@ function onUpdate()
     cameraSetTarget('boyfriend')
 
     if LoadCharacterswithC then
-       triggerEvent("Change Character", "boyfriend", bAndGChars[1][bAndGNums[1]])
-       triggerEvent("Change Character", "gf", bAndGChars[2][bAndGNums[2]])
+       triggerEvent("Change Character", "0", bAndGChars[1][bAndGNums[1]])
+       triggerEvent("Change Character", "2", bAndGChars[2][bAndGNums[2]])
     end
     setDataFromSave('autoCharacterSelect', 'bf', bAndGChars[1][bAndGNums[1]])
     setDataFromSave('autoCharacterSelect', 'gf', bAndGChars[2][bAndGNums[2]])
@@ -238,41 +244,54 @@ for c = 1,#bAndGChars,1 do
     currentY = 0
     for i = 1,#bAndGChars[c],1 do
     if count == 1 then currentY = currentY + 70 end
-
     makeLuaText(i..c..'TEXT', string.sub(bAndGChars[c][i], 1, 5), screenWidth, (70 * count) - 650, currentY)
     setObjectCamera(i..c..'TEXT',"other")
     setProperty(i..c..'TEXT.borderSize', 1.25)
     setObjectOrder(i..c..'TEXT', 1)
     addLuaText(i..c..'TEXT')
-    if c > 1 then setProperty(i..c..'TEXT.visible', false) end
+    if c == 2 then setProperty(i..c..'TEXT.visible', false) end
      count = count + 1
      if count == 6 then count = 1 end
     end
-end
     setTextColor('11TEXT', 'ffff00')  
     setTextColor('12TEXT', 'ffff00') 
+    if isMobile then -- so ugly
+    if count == 1 then currentY = currentY + 70 end
+    name = 'gf' if c == 2 then name = 'bf' end
+
+    makeLuaText((#bAndGChars[c] + 1)..c..'TEXT', name..'switch', screenWidth, (70 * count) - 650, currentY)
+    setObjectCamera((#bAndGChars[c] + 1)..c..'TEXT',"other")
+    setProperty((#bAndGChars[c] + 1)..c..'TEXT.borderSize', 1.25)
+    setObjectOrder((#bAndGChars[c] + 1)..c..'TEXT', 1)
+    addLuaText((#bAndGChars[c] + 1)..c..'TEXT')
+    if c == 2 then setProperty((#bAndGChars[c] + 1)..c..'TEXT.visible', false) end
+    end
+    
+    setTextColor((#bAndGChars[1] + 1)..c..'TEXT', 'ff0000')  
+    setTextColor((#bAndGChars[2] + 1)..c..'TEXT', '00ffff')  
+    end
 end
 
 function changeItem(number)
 bAndGNums[bfOrGf] = bAndGNums[bfOrGf] + number
 
-if bAndGNums[bfOrGf] < 1 or bAndGNums[bfOrGf] > #bAndGChars[bfOrGf] then
+if bAndGNums[bfOrGf] < 1 or bAndGNums[bfOrGf] > #bAndGChars[bfOrGf] + mobileOffset then
     if number > 0 then
     bAndGNums[bfOrGf] = 1
-    for i = 1,#bAndGChars[bfOrGf],1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') + 630 * (pages[bfOrGf] - 1)) end
+    for i = 1,#bAndGChars[bfOrGf] + mobileOffset,1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') + 630 * (pages[bfOrGf] - 1)) end
     pages[bfOrGf] = pages[bfOrGf] - (pages[bfOrGf] - 1) 
     else
     bAndGNums[bfOrGf] = #bAndGChars[bfOrGf]
     pages[bfOrGf] = pages[bfOrGf] + 1    
-    for i = 1,#bAndGChars[bfOrGf],1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') - 630 * (pages[bfOrGf] - 1)) end
+    for i = 1,#bAndGChars[bfOrGf] + mobileOffset,1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') - 630 * (pages[bfOrGf] - 1)) end
     end
 end
 
 if bAndGNums[bfOrGf] - (45 * (pages[bfOrGf] - 1)) >= 46 then
- for i = 1,#bAndGChars[bfOrGf],1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') - 630) end
+ for i = 1,#bAndGChars[bfOrGf] + mobileOffset,1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') - 630) end
  pages[bfOrGf] = pages[bfOrGf] + 1    
 else if bAndGNums[bfOrGf] - (45 * (pages[bfOrGf] - 1)) <= 0 then
- for i = 1,#bAndGChars[bfOrGf],1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') + 630) end
+ for i = 1,#bAndGChars[bfOrGf] + mobileOffset,1 do setProperty(i..bfOrGf..'TEXT.y', getProperty(i..bfOrGf..'TEXT.y') + 630) end
  pages[bfOrGf] = pages[bfOrGf] - 1    
 end
 end
@@ -282,11 +301,12 @@ triggerEvent("Change Character", bAndGCharacterNumber[bfOrGf], bAndGChars[bfOrGf
 if bfOrGf == 1 then cameraSetTarget("boyfriend") else triggerEvent('Camera Follow Pos',getMidpointX('gf')+getProperty('gf.cameraPosition[0]'),getMidpointY('gf')+getProperty('gf.cameraPosition[1]')) end
 end
 
-for i = 1,#bAndGChars[bfOrGf],1 do 
-    if bAndGNums[bfOrGf] == i then
+for i = 1,#bAndGChars[bfOrGf] + mobileOffset,1 do 
+    if bAndGNums[bfOrGf] == i and#bAndGChars[bfOrGf] >= i then
     setTextColor(i..bfOrGf..'TEXT', 'ffff00')  
-    else
+    else if i <= #bAndGChars[bfOrGf] then
     setTextColor(i..bfOrGf..'TEXT', 'ffffff')  
+    end
     end
 end 
 
