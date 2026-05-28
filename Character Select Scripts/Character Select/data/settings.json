@@ -54,7 +54,7 @@
 	"name": "Load Characters with C",
 	"type": "bool",
 	"description": "Makes it when your in the character select you have to press c to see the character your choosing. This can save a LOT of memory. (btw it loads the character in when you exit out of the character select)",
-	"value": false
+	"value": true
 },
 {
 	

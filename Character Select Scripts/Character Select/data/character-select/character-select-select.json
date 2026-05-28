@@ -1,0 +1,14 @@
+{
+	"song": {
+		"player1": "bf",
+		"gfVersion": "gf",
+		"notes": [],
+		"events": [],
+		"player2": "dad",
+		"song": "Character Select",
+		"needsVoices": true,
+		"stage": "stage",
+		"speed": 1,
+		"bpm": 150
+	}
+}

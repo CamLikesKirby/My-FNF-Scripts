@@ -19,7 +19,6 @@ local LoadCharacterswithC = getModSetting('lcwC', 'Character Select')
 local PreloadCharacters = getModSetting('pload', 'Character Select')
 local PreloadCharactersGF = getModSetting('ploadgf', 'Character Select')
 local AnyGF = getModSetting('gfunlocked', 'Character Select')
-
 -- Don't touch unless you know what your doing!!
 
 -- BF and GF vars combined
@@ -99,7 +98,7 @@ function onStartCountdown()
  return Function_Continue
 end 
 
-function onUpdate()        
+function onUpdate()   
   toptext = 'PLAYER'
   animControls = '\nD, F, J, K'
   if bfOrGf == 2 then toptext = 'PARTNER' animControls = '' end
@@ -186,12 +185,11 @@ function onUpdate()
     --playAnim("gf", "cheer", true, false, 0) 
 
     runTimer('Exit', 2, 0)
-    musicFadeOut(1)
+    soundFadeOut(nil,1)
     doTweenAlpha('gfalph', 'gf', 1, 1)
     doTweenAlpha('bfalph', 'boyfriend', 1, 1)
     doTweenAlpha('text', 'camOther', 0, 0.5)
-else
-    exitSong(true)
+else exitSong(true)
         end
     end
 end
@@ -199,12 +197,9 @@ end
 function onTimerCompleted(tag)
     if tag == 'Dance' then
         playAnim("boyfriend", "idle", false, false, 0)
+        playAnim("gf", "idle", false, false, 0)
      
-        if gfdance == 1 then
-            gfdance = 0
-        else
-            gfdance = gfdance + 1
-        end
+        if gfdance == 1 then gfdance = 0 else gfdance = 1 end
 
         if gfdance == 0 then
         playAnim("gf", "danceLeft", false, false, 0)
@@ -213,7 +208,6 @@ function onTimerCompleted(tag)
         playAnim("gf", "danceRight", false, false, 0)
         playAnim("boyfriend", "danceRight", false, false, 0) 
         end
-        playAnim("gf", "idle", false, false, 0)
     end
     if tag == 'Exit' then exitSong(true) end
 end
@@ -309,8 +303,6 @@ else if bAndGNums[bfOrGf] - (45 * (pages[bfOrGf] - 1)) <= 0 then
  pages[bfOrGf] = pages[bfOrGf] - 1    
 end
 end
-
-
 
 if not LoadCharacterswithC then
 triggerEvent("Change Character", bAndGCharacterNumber[bfOrGf], bAndGChars[bfOrGf][bAndGNums[bfOrGf]])
