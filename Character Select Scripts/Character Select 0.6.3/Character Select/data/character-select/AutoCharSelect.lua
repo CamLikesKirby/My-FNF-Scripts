@@ -10,7 +10,7 @@ local blockedCharactersGF = {'nene', 'pico-speaker', 'gf-pixel'}
 
 -- Easily Editable: For psych forks with different folder locations
 local assetsSharedCharactersFolder = 'assets/characters' -- Base Game Character Location
-local modsFolder = 'mods/'
+local modsFolder = 'mods'
 
 -- Easily Editable: Settings
 local BaseCharacters = false
@@ -37,7 +37,7 @@ local folders = ''
 
 function onCreatePost()
     if not isMobile then mobileOffset = 0 end
-    removeLuaScript(modsFolder..'Character Select/scripts/CharacterLoader.lua')
+    removeLuaScript(modsFolder..'/Character Select/scripts/CharacterLoader.lua')
     setProperty('camHUD.alpha', 0)
     setProperty('dad.alpha', 0)
 
@@ -209,7 +209,7 @@ function addTheCharacters()
 
 for i = 1,#folders,1 do
    if contains(modNames,folders[i]) then
-    mfc = directoryFileList(modsFolder ..folders[i].. '/characters')
+    mfc = directoryFileList(modsFolder..'/' ..folders[i].. '/characters')
     f = folders[i]
    for i = 1, #mfc,1 do 
     table.insert(CharFolder, mfc[i]) 
@@ -218,7 +218,7 @@ end
 end
 
    if ModCharacters then
-   mc = directoryFileList(modsFolder.. 'characters')
+   mc = directoryFileList(modsFolder.. '/characters')
    for i = 1, #mc,1 do table.insert(CharFolder, mc[i]) end
    end
 
@@ -253,8 +253,6 @@ for c = 1,#bAndGChars,1 do
      count = count + 1
      if count == 6 then count = 1 end
     end
-    setTextColor('11TEXT', 'ffff00')  
-    setTextColor('12TEXT', 'ffff00') 
     if isMobile then -- so ugly
     if count == 1 then currentY = currentY + 70 end
     name = 'gf' if c == 2 then name = 'bf' end
@@ -265,11 +263,12 @@ for c = 1,#bAndGChars,1 do
     setObjectOrder((#bAndGChars[c] + 1)..c..'TEXT', 1)
     addLuaText((#bAndGChars[c] + 1)..c..'TEXT')
     if c == 2 then setProperty((#bAndGChars[c] + 1)..c..'TEXT.visible', false) end
-    end
-    
     setTextColor((#bAndGChars[1] + 1)..c..'TEXT', 'ff0000')  
     setTextColor((#bAndGChars[2] + 1)..c..'TEXT', '00ffff')  
     end
+    end
+    setTextColor('11TEXT', 'ffff00')  
+    setTextColor('12TEXT', 'ffff00') 
 end
 
 function changeItem(number)

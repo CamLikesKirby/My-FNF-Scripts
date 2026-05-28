@@ -9,7 +9,7 @@ local blockedCharactersGF = {'nene', 'pico-speaker', 'gf-pixel'}
 
 -- Easily Editable: For psych forks with different folder locations
 local assetsSharedCharactersFolder = 'assets/shared/characters' -- Base Game Character Location
-local modsFolder = 'mods/'
+local modsFolder = 'mods'
 
 -- Settings
 local BaseCharacters = getModSetting('baCh', 'Character Select')
@@ -64,16 +64,12 @@ function onCreatePost()
     savebforgf[1] = getDataFromSave('autoCharacterSelect', 'bf', 'bf') 
     savebforgf[2] = getDataFromSave('autoCharacterSelect', 'gf', 'gf')
 
-   runHaxeCode([[
+      runHaxeCode([[
     createCallback('checkAnimation', function(text:String, character:String) {
         if (character == 'b') {
             return boyfriend.animation.getByName(text) != null;
-        } else if (character == 'd') {
-            return dad.animation.getByName(text) != null;
         } else if (character == 'g') {
             return gf.animation.getByName(text) != null;
-        } else {
-            return boyfriend.animation.getByName(text) != null;
         }
     });
 ]])
@@ -190,8 +186,6 @@ function onUpdate()
     else
     playAnim("gf", "singUP", true, false, 0) 
     end
-    --playAnim("boyfriend", "hey", true, false, 0)
-    --playAnim("gf", "cheer", true, false, 0) 
 
     runTimer('Exit', 2, 0)
     soundFadeOut(nil,1)
@@ -239,7 +233,7 @@ function addTheCharacters()
 
 for i = 1,#folders,1 do
    if contains(modNames,folders[i]) and contains(enabledModFolders,folders[i]) then
-    mfc = directoryFileList(modsFolder ..folders[i].. '/characters')
+    mfc = directoryFileList(modsFolder..'/' ..folders[i].. '/characters')
     f = folders[i]
    for i = 1, #mfc,1 do 
     table.insert(CharFolder, mfc[i]) 
@@ -248,7 +242,7 @@ end
 end
 
    if ModCharacters then
-   mc = directoryFileList(modsFolder.. 'characters')
+   mc = directoryFileList(modsFolder.. '/characters')
    for i = 1, #mc,1 do table.insert(CharFolder, mc[i]) end
    end
 
@@ -283,8 +277,6 @@ for c = 1,#bAndGChars,1 do
      count = count + 1
      if count == 6 then count = 1 end
     end
-    setTextColor('11TEXT', 'yellow')  
-    setTextColor('12TEXT', 'yellow') 
     if isMobile then -- so ugly
     if count == 1 then currentY = currentY + 70 end
     name = 'gf' if c == 2 then name = 'bf' end
@@ -295,11 +287,12 @@ for c = 1,#bAndGChars,1 do
     setObjectOrder((#bAndGChars[c] + 1)..c..'TEXT', 1)
     addLuaText((#bAndGChars[c] + 1)..c..'TEXT')
     if c == 2 then setProperty((#bAndGChars[c] + 1)..c..'TEXT.visible', false) end
-    end
-    
     setTextColor((#bAndGChars[1] + 1)..c..'TEXT', 'red')  
     setTextColor((#bAndGChars[2] + 1)..c..'TEXT', 'cyan')  
     end
+    end
+    setTextColor('11TEXT', 'yellow')  
+    setTextColor('12TEXT', 'yellow') 
 end
 
 function changeItem(number)
