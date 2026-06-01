@@ -13,8 +13,11 @@ var settings = {
 ghostLimit: 20,
 animated: false,
 ghostMoves: true,
-ghostSustains: true,
-coloredGhosts: true
+ghostSustains: false,
+coloredGhosts: true,
+howFarItMoves: 400,
+howFarLongItTakesToMove: 4,
+typeOfEase: FlxEase.circOut // https://api.haxeflixel.com/flixel/tweens/FlxEase.html
 }
 
 var bfStuffs = {
@@ -37,8 +40,6 @@ function goodNoteHit(n) {
     if (n.isSustainNote) return;
     calcalateInfo(n, boyfriend);
 }
-
-
 
 function opponentNoteHit(n) {
     if (n.isSustainNote) return;
@@ -87,13 +88,13 @@ function makeGhost(char:Character, animToPlay:String, noteData:Int, swagNote:Boo
     if (settings.ghostMoves) switch(noteData) // noteData works better because you don't have to rely on the animations for the effect
 	{
 	case 0:
-        FlxTween.tween(trail, {x: trail.x + -400}, 4, {ease: FlxEase.circOut});
+        FlxTween.tween(trail, {x: trail.x - settings.howFarItMoves}, settings.howFarLongItTakesToMove, {ease: settings.typeOfEase});
 	case 1:
-        FlxTween.tween(trail, {y: trail.y + 400}, 4, {ease: FlxEase.circOut});
+        FlxTween.tween(trail, {y: trail.y + settings.howFarItMoves}, settings.howFarLongItTakesToMove, {ease: settings.typeOfEase});
 	case 2:
-        FlxTween.tween(trail, {y: trail.y + -400}, 4, {ease: FlxEase.circOut});
+        FlxTween.tween(trail, {y: trail.y - settings.howFarItMoves}, settings.howFarLongItTakesToMove, {ease: settings.typeOfEase});
 	case 3:
-        FlxTween.tween(trail, {x: trail.x + 400}, 4, {ease: FlxEase.circOut});
+        FlxTween.tween(trail, {x: trail.x + settings.howFarItMoves}, settings.howFarLongItTakesToMove, {ease: settings.typeOfEase});
     }
     
     if (!swagNote) {
