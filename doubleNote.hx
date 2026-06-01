@@ -15,8 +15,8 @@ animated: false,
 ghostMoves: true,
 ghostSustains: false,
 coloredGhosts: true,
-howFarItMoves: 400,
-howFarLongItTakesToMove: 4,
+howFarItMoves: 80,
+howFarLongItTakesToMove: 8,
 typeOfEase: FlxEase.circOut // https://api.haxeflixel.com/flixel/tweens/FlxEase.html
 }
 
