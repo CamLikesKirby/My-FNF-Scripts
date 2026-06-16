@@ -1,36 +1,30 @@
--- This code is kinda ehh but just don't mind it since this is a joke script
--- Script made by camthekirby/camlikeskirby
-deathCounter = getPropertyFromClass('states.PlayState', 'deathCounter') -- werid I can only get this through class
+-- Script made by camlikeskirby
+
+deathCounter = getPropertyFromClass('states.PlayState', 'deathCounter')
 inMemoriam = false
 birthDate = os.date('%m-%d-%Y %H:%M:%S') 
 deathDate = ''
-
--- Settings --
-local autoRestart = true
-local music = true
---------------
+isMobile = buildTarget == 'android' or buildTarget == 'ios' or buildTarget == 'unknown'
 
 function onCreate()
-if getModSettingCamVer('mus', 'Memoriam', music) then precacheSound('NOOOOOBFNNOOO') end
+if getModSetting('mus', 'Memoriam') then precacheSound('sadDeathSong') end
 initLuaShader("desaturate"); -- thanks for https://gamebanana.com/tools/13333 for the shader
 end
 
 function onGameOver()
--- Start of Memoriam
 inMemoriam = true; 
 deathDate = os.date('%m-%d-%Y %H:%M:%S') 
 setHealth(0.1)
-setProperty('cameraSpeed', 999.99) --
-setProperty('boyfriend.y', -99999) -- So nothing shows in the background
+setProperty('cameraSpeed', 999.99) 
+setProperty('boyfriend.y', -99999)
 cameraSetTarget("boyfriend")
 
 setPropertyFromClass('states.PlayState', 'deathCounter', deathCounter + 1)
 
-
 makeLuaSprite('grayScale') 
 setSpriteShader('grayScale', 'desaturate')
 
-if not luaSoundExists('Music') and getModSettingCamVer('mus', 'Memoriam', music) then playSound('NOOOOOBFNNOOO', 1, 'Music') end 
+if not luaSoundExists('Music') and getModSetting('mus', 'Memoriam') then playSound('sadDeathSong', 1, 'Music') end 
 
 -- borrowed some code from playstate
 runHaxeCode([[ 
@@ -64,7 +58,7 @@ scaleObject('bg', screenWidth*10, screenHeight*10)
 screenCenter('bg')
 addLuaSprite('bg')
 
-makeLuaText('deathText', 'In Loving Memory\n'..boyfriendName..'\n'..birthDate..' - '..deathDate, 0, 150, 200) 
+makeLuaText('deathText', 'In Loving Memory,\n'..boyfriendName..'\n'..birthDate..' - '..deathDate, 0, 150, 200) 
 setObjectCamera('deathText', 'other')
 setProperty('deathText.alpha',0)
 setTextSize('deathText', 40)
@@ -74,10 +68,23 @@ runTimer('rip')
    return Function_Stop 
 end
 
+function onUpdatePost()
+  if inMemoriam and not stringStartsWith(version, '1.0') then runHaxeCode([[ 
+  boyfriend.animation.pause();
+	if(FlxG.sound.music != null) {
+		FlxG.sound.music.pause();
+		vocals.pause();
+		opponentVocals.pause();
+	} 
+]])
+end
+end
+
 function onPause()
  if inMemoriam then
     if keyJustPressed('back') then  
-    setPropertyFromClass('states.PlayState', 'chartingMode', true) -- so the score doesn't save
+    -- so the score doesn't save
+    setPropertyFromClass('states.PlayState', 'chartingMode', true) 
     exitSong(true)
   else
     restartSong(true) 
@@ -94,15 +101,5 @@ function onTimerCompleted(tag)
 end
 
 function onTweenCompleted(tag)
-    if tag == 'bf' and getModSettingCamVer('autoRestart', 'Memoriam', autoRestart) then
-        restartSong(true) 
-    end
-end
-
-function getModSettingCamVer(name, modFolder, vaule) 
-    if not stringStartsWith(version, '0.6.3') then 
-      return getModSetting(name, modFolder)
-    else
-        return vaule 
-    end
+if tag == 'bf' and (getModSetting('autoRestart', 'Memoriam') or isMobile) then restartSong(true) end
 end
