@@ -1,0 +1,13 @@
+{
+    "title": "Memoriam",
+    "description": "A funny custom death screen",
+    "contributors": [
+    {
+      "name": "CamlikesKirby",
+      "role": "Coded the whole script"
+    }
+  ],
+    "api_version": "0.8.5",
+    "mod_version": "1.0.0",
+    "license": "CC BY 4.0,MIT"
+}

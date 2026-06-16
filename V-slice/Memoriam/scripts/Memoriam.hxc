@@ -1,0 +1,148 @@
+import funkin.play.PlayState;
+import funkin.modding.module.ScriptedModule;
+import flixel.util.FlxColor;
+import funkin.graphics.shaders.Grayscale;
+import openfl.filters.ShaderFilter;
+import flixel.util.FlxTimer;
+import funkin.graphics.FunkinSprite;
+import flixel.text.FlxText;
+import flixel.text.FlxTextBorderStyle;
+import funkin.audio.FunkinSound;
+import funkin.Paths;
+import Date;
+import flixel.tweens.FlxEase;
+import flixel.tweens.FlxTween;
+import funkin.input.Controls;
+
+class Memoriam extends ScriptedModule
+{
+	// Bool that helps other functions to detect if the player is in the custom death screen
+	var inMemoriam:Bool = false;
+
+    // Gets the time when the song starts
+	var birthDate:String;
+
+	// The actual "isInCountdown" var is broken I think, so I made this
+	var actualIsInCountDown:Bool = true;
+
+	// The death text showing the characters name, the time where the song starts and when the song ends
+	var deathText:FlxText;
+
+	public function new()
+	{
+		super("Mem");
+	}
+	
+	override function onUpdate(e:ScriptEvent):Void
+    {
+	var game = PlayState.instance;
+	if (game == null) return;
+
+	var bf = game.currentStage.getBoyfriend();
+	// copies the normal gameover and prepares the memoriam game over
+    if (game.health <= Constants.HEALTH_MIN + 1 && !inMemoriam && !game.isPracticeMode) prepareMemoriam();
+    if (inMemoriam) bf.animation.pause(); // freezes BF #1
+	}
+
+	function prepareMemoriam() {
+	var game = PlayState.instance;
+	game.health = Constants.HEALTH_MIN + 1.1;
+
+	if (actualIsInCountDown) return; // not a good way to fix the countdown bug but it works
+
+	game.vocals?.pause();
+    if (FlxG.sound.music != null) FlxG.sound.music.pause();
+
+	game.playerStrumline.clean();
+    game.opponentStrumline.clean();
+	game.persistentUpdate = false;
+	game.persistentDraw = false;
+	game.isPlayerDying = true;
+	game.disableKeys = true;
+	game.isGameOverState = true;
+    game.shouldSubstatePause = true;
+
+	var bf = game.currentStage.getBoyfriend();
+
+	// Gets rid of any shaders that are on BF
+    bf.shader = null;
+
+	// Makes BF Gray and hides the HUD
+	var grayScaleShader:Grayscale = new Grayscale();
+	for (cam in [game.camGame]) cam.filters = [new ShaderFilter(grayScaleShader)];
+	for (cam in [game.camHUD]) cam.alpha = 0;
+
+	// Creates BG
+    var bg:FunkinSprite = new FunkinSprite().makeSolidColor(FlxG.width * 10, FlxG.height * 10, FlxColor.BLACK);
+    bg.scrollFactor.set();
+    bg.screenCenter();
+	bg.zIndex = bf.zIndex - 1;
+    game.currentStage.add(bg); 
+	game.currentStage.refresh();
+
+	// teleports bf into the void (And also hides him)
+	bf.set_x(-99999);
+	bf.alpha = 0;
+
+	// Creates Death Text
+	deathText = new FlxText(150, 200, 0, 'In Loving Memory,\n' + bf.characterName + '\n' + birthDate + ' - ' + Date.now());
+	deathText.setFormat(Paths.font("vcr.ttf"), 20, -1, "left", FlxTextBorderStyle.OUTLINE, 0xFF000000);
+    deathText.color = FlxColor.WHITE;
+	deathText.size = 45;
+	deathText.alpha = 0;
+	deathText.cameras = [game.camSubtitles];
+    deathText.borderColor = FlxColor.BLACK;
+	deathText.borderStyle = FlxTextBorderStyle.OUTLINE;
+    game.add(deathText);
+
+    // Forces the camera to immediately head to BF's position and also disables camera tweens (The disabling code being from playstate)
+    game.cameraFollowPoint.setPosition(bf.cameraFocusPoint.x, bf.cameraFocusPoint.y);
+	try { game.resetCamera(); } catch (e:Dynamic) { trace('Couldn\'t reset and snap the camera to BF: ' + e); }
+
+    // freezes bf #2
+	try { bf.animation.finish();
+	} catch (e:Dynamic) { trace('Couldn\'t finish the current Animation: ' + e); }
+	try { bf.isDead = true; } catch (e:Dynamic) { trace('Couldn\'t set the bf.isDead variable to true: ' + e); }
+
+	inMemoriam = true;
+	game.deathCounter += 1;
+	startMemoriam();
+	}
+
+	function startMemoriam() {
+	var game = PlayState.instance;
+    var bf = game.currentStage.getBoyfriend();
+
+	FunkinSound.playOnce(Paths.sound('deathMusic'));
+    
+    FlxTween.tween(bf, {alpha: 1}, 5.5, {ease: FlxEase.circOut});
+    FlxTween.tween(deathText, {alpha: 1}, 5, {ease: FlxEase.circIn});
+      
+	new FlxTimer().start(5.5, function(_) { FlxG.resetState(); });
+	}
+
+	override function onCountdownEnd(event: CountdownScriptEvent):Void
+    { 
+	// The actual "isInCountdown" var is broken I think, so I made this
+	super.onCountdownEnd(event); 
+	new FlxTimer().start(1, function(_) { actualIsInCountDown = false; });
+	}
+
+	override function onCountdownStart(event:CountdownScriptEvent):Void
+    {
+        super.onCountdownStart(event);
+        var game = PlayState.instance;
+		var bf = game.currentStage.getBoyfriend();
+
+        // if (inMemoriam) game.deathCounter += 1;
+		inMemoriam = false; 
+		
+		try { bf.isDead = false; } catch (e:Dynamic) { trace('Couldn\'t set the bf.isDead variable to false: ' + e); }
+
+		// The actual "isInCountdown" var is broken I think, so I made this
+		actualIsInCountDown = true;
+
+	    Constants.HEALTH_MIN = -1;
+		birthDate = Date.now();
+    }
+}
