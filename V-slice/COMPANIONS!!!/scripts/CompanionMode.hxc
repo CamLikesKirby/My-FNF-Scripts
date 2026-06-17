@@ -1,0 +1,1333 @@
+import flixel.FlxG;
+import flixel.util.FlxTimer;
+import flixel.tweens.FlxTween;
+import flixel.tweens.FlxEase;
+
+import funkin.Conductor;
+import funkin.graphics.shaders.DropShadowShader;
+import funkin.FunkinMemory;
+import funkin.audio.FunkinSound;
+import funkin.modding.module.Module;
+import funkin.play.PlayState;
+import funkin.play.character.BaseCharacter;
+import funkin.data.character.CharacterDataParser;
+import funkin.play.notes.Strumline;
+import funkin.play.notes.notekind.NoteKind;
+import funkin.play.notes.notekind.NoteKindManager;
+import funkin.save.Save;
+import funkin.util.Constants;
+import funkin.util.GRhythmUtil;
+
+using StringTools;
+
+/**
+ * CompanionMode — spawns an AI companion character + hidden strumline in-song.
+ *
+ * Changes from v2:
+ *  - NovaUtils → CompanionHelper
+ *  - Arrow images loaded from companionArrows/ instead of modifierArrows/
+ *  - Auto Gain Control rewritten: uses a single-pass EMA on amplitude ratio
+ *    (avoids computing two separate EMAs; same behaviour, fewer operations).
+ *  - Companion health icon: added a note-hit pulse effect (scale bounce).
+ *  - Minor: combined duplicate null-guard patterns into helper methods.
+ */
+class CompanionMode extends Module
+{
+  var companionStrumline:Strumline;
+  public var companionChar:BaseCharacter;
+
+  var companionVocals:FunkinSound;
+  var companionVocals2:FunkinSound;
+  var companionEvents:Array<Dynamic>;
+  var companionHealthIcon:Dynamic;
+
+  var vocalsVolume:Float = 1.0;
+
+  // ── Auto Gain Control ─────────────────────────────────────────────────────
+  // Tracks ratio of reference-to-companion amplitude via a single EMA,
+  // then ramps the actual gain slowly to prevent audible pumping.
+  var agcGain:Float        = 1.0;
+  var agcRatioEMA:Float    = 1.0;   // smoothed target-gain estimate
+  var agcMinGain:Float     = 0.25;
+  var agcMaxGain:Float     = 4.0;
+  var agcSilenceThresh:Float = 0.015;
+  // EMA time constants (seconds)
+  static inline var AGC_EMA_TC:Float  = 0.15;  // amplitude tracking window
+  static inline var AGC_GAIN_TC:Float = 3.0;   // gain ramp speed (slow = no pumping)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  public static var lastCompanionId:String = "bf";
+  var pendingSpawn:Bool = false;
+
+  // Health-icon pulse state
+  var iconPulseTimer:Float = 0.0;
+  static inline var ICON_PULSE_DUR:Float = 0.12; // seconds
+
+  function new()
+  {
+    super('CompanionMode', 1000, {state: PlayState});
+  }
+
+  // ── Module events ──────────────────────────────────────────────────────────
+
+  override function onStateChangeBegin(event)
+  {
+    super.onStateChangeBegin(event);
+    // If transitioning to GameOverSubState, play companion death sound first.
+    cleanup();
+  }
+
+  override function onSongRetry(event)
+  {
+    super.onSongRetry(event);
+    cleanup();
+    // Immediately spawn a placeholder strumline so 3 are always visible from the start.
+    _spawnPlaceholderStrumline();
+    pendingSpawn = true;
+  }
+
+  override function onSongLoaded(event:SongLoadScriptEvent)
+  {
+    super.onSongLoaded(event);
+    cleanup();
+    pendingSpawn = true;
+  }
+
+  function onCountdownStart(event:CountdownScriptEvent)
+  {
+    super.onCountdownStart(event);
+    if (!pendingSpawn) return;
+    pendingSpawn = false;
+
+    // Spawn placeholder immediately so 3 strumlines show from beat 1.
+    _spawnPlaceholderStrumline();
+    // Then replace with the real companion strumline after a tick.
+    new FlxTimer().start(0.01, (_) -> createCompanion());
+  }
+
+
+  function _showCompanionNotes():Bool
+  {
+    try
+    {
+      var opts = Save.instance.getModOptions("COMPANION-2P");
+      if (opts != null)
+      {
+        var val:Dynamic = opts.showCompanionNotes;
+        if (val != null) return val == true;
+      }
+    }
+    catch (_:Dynamic) {}
+    return true; // default on
+  }
+
+  function _charRootId(id:String):String
+  {
+    if (id == null) return "";
+    return id.split("-")[0];
+  }
+
+  function _willBeNone():Bool
+  {
+    // In story mode, always act as if companion == player (no companion strumline).
+    try { if (PlayState.instance.isStoryMode) return true; } catch (_:Dynamic) {}
+    try
+    {
+      var savedId     = _readSavedCompanionId();
+      var variation   = PlayState.instance.currentVariation;
+      var difficulty  = PlayState.instance.currentDifficulty;
+      if (variation == null) variation = "default";
+      if (difficulty == null) difficulty = "normal";
+      var diff = PlayState.instance.currentSong.getDifficulty(difficulty, variation);
+      if (diff == null) return false;
+      var chartPlayer:String = "";
+      try { chartPlayer = diff.characters.player; } catch (_:Dynamic) {}
+      var savedRoot = _charRootId(savedId);
+      // Never treat fnf2/bf2 as "same as player" — bf2 is the companion, not the main player.
+      var isFnf2Companion = savedRoot ==  CompanionHelper.currentCompanionJson.baseCharacter || savedRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName;
+      if (!isFnf2Companion && _charRootId(chartPlayer) == savedRoot) return true;
+      
+      var variantId = getSelectedCompanionId();
+      if (!isFnf2Companion && chartPlayer == variantId) return true;
+    }
+    catch (_:Dynamic) {}
+    return false;
+  }
+
+  function _readSavedCompanionId():String
+  {
+    var options = Save.instance.getModOptions("COMPANION-2P");
+    var id:String = null;
+    try { id = options.companionId; } catch (_:Dynamic) {}
+    return id != null ? id : "bf";
+  }
+
+  function _spawnPlaceholderStrumline()
+  {
+    if (PlayState.instance == null) return;
+    // Remove existing placeholder if any.
+    if (companionStrumline != null)
+    {
+      try { PlayState.instance.remove(companionStrumline); } catch (_:Dynamic) {}
+      companionStrumline.destroy();
+      companionStrumline = null;
+    }
+
+    // If the companion will be skipped OR notes are disabled, use hidden strumline.
+
+    if (_willBeNone() || !_showCompanionNotes())
+    {
+      try { PlayState.instance.camHUD.zoom = 1.0; } catch (_:Dynamic) {}
+      try { PlayState.instance.camHUD.scroll.y = 0; } catch (_:Dynamic) {}
+      try
+      {
+        var playerSL   = PlayState.instance.playerStrumline;
+        var opponentSL = PlayState.instance.opponentStrumline;
+        if (playerSL != null)   playerSL.x   = FlxG.width - playerSL.width - 50;
+        if (opponentSL != null) opponentSL.x = 50;
+      }
+      catch (_:Dynamic) {}
+      return;
+    }
+
+    try
+    {
+      companionStrumline = _makeVisibleStrumline();
+      PlayState.instance.add(companionStrumline);
+      _repositionStrumlines();
+      try { PlayState.instance.camHUD.zoom = 0.85; } catch (_:Dynamic) {}
+      try { PlayState.instance.camHUD.scroll.y = 60; } catch (_:Dynamic) {}
+    }
+    catch (_:Dynamic) {}
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function getSelectedCompanionId():String
+  {
+    var options = Save.instance.getModOptions("COMPANION-2P");
+    var id:String = null;
+    try { id = options.companionId; } catch (_:Dynamic) {}
+    if (id == null) id = "bf";
+    lastCompanionId = id;
+    return id;
+  }
+
+  /**
+   * Maps a companion character ID to the song variation name used in the chart.
+   */
+  function companionToVariation(id:String):String
+  {
+    if (id == null) return "default";
+   return CompanionHelper.currentCompanionJson.songVariationName;
+  }
+
+  /**
+   * Returns a valid starting animation name for the character, falling back
+   * through common alternatives if the declared one is absent or empty.
+   */
+  function getSafeStartAnim(char:BaseCharacter):String
+  {
+    try
+    {
+      var declared = char.characterData?.startingAnimation;
+      if (declared != null && declared != "" && char.hasAnimation(declared))
+        return declared;
+    }
+    catch (_:Dynamic) {}
+
+    for (anim in ["idle", "danceRight", "danceLeft"])
+      try { if (char.hasAnimation(anim)) return anim; } catch (_:Dynamic) {}
+
+    return null;
+  }
+
+  // ── Companion creation ────────────────────────────────────────────────────
+
+  function createCompanion()
+  {
+    if (PlayState.instance?.currentStage == null
+        || PlayState.instance?.currentSong  == null) return;
+
+    var companionId = getSelectedCompanionId();
+     
+    // Skip spawning if the companion is the same character as the main player.
+    try
+    {
+      var variation  = PlayState.instance.currentVariation;
+      var difficulty = PlayState.instance.currentDifficulty;
+      if (variation == null) variation = "default";
+      if (difficulty == null) difficulty = "normal";
+      var diff = PlayState.instance.currentSong.getDifficulty(difficulty, variation);
+      if (diff != null)
+      {
+        var chartPlayer:String = "";
+        try { chartPlayer = diff.characters.player; } catch (_:Dynamic) {}
+        var savedRoot = _charRootId(_readSavedCompanionId());
+        var chartRoot = _charRootId(chartPlayer);
+        // Never skip for fnf2/bf2 — bf2 IS the companion character, not the main player.
+        var isFnf2Companion = savedRoot ==  CompanionHelper.currentCompanionJson.baseCharacter || savedRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName;
+        if (!isFnf2Companion && savedRoot != "" && savedRoot == chartRoot)
+        {
+          trace("[CompanionMode] Companion root matches chart player — skipping spawn.");
+          companionId = "__none__";
+        }
+        else if (!isFnf2Companion && chartPlayer == companionId)
+        {
+          companionId = "__none__";
+        }
+      }
+    }
+    catch (_:Dynamic) {}
+
+    if (companionId == "__none__")
+    {
+      _cachedShowNotes = false;
+      _spawnHiddenStrumline();
+      return;
+    }
+
+    _spawnCharacter(companionId);
+    _spawnStrumlineAndVocals(companionId);
+    _spawnHealthIcon();
+    // Cache values used every frame so we never hit Save.instance in onUpdate.
+    _cachedShowNotes   = _showCompanionNotes();
+    _cachedCompanionId = companionId;
+    try { _cachedIconP1 = PlayState.instance.iconP1; } catch (_:Dynamic) {}
+  }
+
+  function _spawnHiddenStrumline()
+  {
+    companionStrumline = _makeHiddenStrumline();
+    PlayState.instance.add(companionStrumline);
+  }
+
+  function _makeHiddenStrumline():Strumline
+  {
+    var sl = new Strumline(PlayState.instance.noteStyle, false);
+    sl.x = -9999; sl.y = -9999;
+    sl.visible = false; sl.alpha = 0;
+    return sl;
+  }
+
+  function _makeVisibleStrumline():Strumline
+  {
+    // isPlayer=false matches the opponent strumline — hold notes render as a
+    // full trail instead of clipping when not held down.
+    var sl = new Strumline(PlayState.instance.noteStyle, false);
+    sl.visible = true;
+    sl.alpha = 1;
+    sl.cameras = [PlayState.instance.camHUD];
+    return sl;
+  }
+
+
+
+  function _repositionStrumlines()
+  {
+    try
+    {
+      var playerSL   = PlayState.instance.playerStrumline;
+      var opponentSL = PlayState.instance.opponentStrumline;
+      if (playerSL == null || opponentSL == null || companionStrumline == null) return;
+
+      // Zoom the HUD camera out so all 3 strumlines fit side by side.
+      try { PlayState.instance.camHUD.zoom = 0.85; } catch (_:Dynamic) {}
+
+      // At 0.85 zoom the visible HUD area is ~1506px wide.
+      opponentSL.x         = -80;
+      playerSL.x           = 420;
+      companionStrumline.x = 920;
+
+      companionStrumline.y = playerSL.y;
+    }
+    catch (_:Dynamic) {}
+  }
+
+  function _spawnCharacter(companionId:String)
+  {
+    // Try normal fetch first.
+    try { companionChar = CharacterDataParser.fetchCharacter(companionId); }
+    catch (_:Dynamic) { companionChar = null; }
+
+    if (companionChar == null)
+    {
+      try { companionChar = CharacterDataParser.fetchCharacter(companionId, false); }
+      catch (_:Dynamic) { companionChar = null; }
+    }
+    if (companionChar == null)
+    {
+      try { companionChar = CharacterDataParser.fetchCharacter(companionId, true); }
+      catch (_:Dynamic) { companionChar = null; }
+    }
+
+    // If bf2 variant fails (assets not available), try base bf2 or fall back to bf.
+    if (companionChar == null && CompanionHelper.currentCompanionJson.checkSavedRoot && (companionId.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) || companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName))
+    {
+      try { companionChar = CharacterDataParser.fetchCharacter( CompanionHelper.currentCompanionJson.baseCharacter); } catch (_:Dynamic) {}
+      if (companionChar == null)
+        try { companionChar = CharacterDataParser.fetchCharacter("bf"); } catch (_:Dynamic) {}
+    }
+
+    if (companionChar == null) return;
+
+    var stage        = PlayState.instance.currentStage;
+    var stageCharData = stage._data.characters.bf;
+
+    // Patch empty startingAnimation so resetCharacter doesn't crash.
+    var patchedStartAnim = false;
+    try
+    {
+      var declared = companionChar.characterData?.startingAnimation;
+      if (declared == null || declared == "")
+      {
+        var safe = getSafeStartAnim(companionChar);
+        if (safe != null) { companionChar.characterData.startingAnimation = safe; patchedStartAnim = true; }
+      }
+    }
+    catch (_:Dynamic) {}
+
+    try { companionChar.resetCharacter(true); } catch (_:Dynamic) {}
+
+    if (patchedStartAnim)
+      try { companionChar.characterData.startingAnimation = ""; } catch (_:Dynamic) {}
+
+    var startAnim = getSafeStartAnim(companionChar);
+    if (startAnim != null)
+      try { companionChar.playAnimation(startAnim, true, true); } catch (_:Dynamic) {}
+
+    var globalData = CompanionHelper.getGlobalData();
+
+    companionChar.flipX  = !companionChar.getDataFlipX();
+    var carSongsZ:Array<String> = globalData.carSongsZ;
+    var currentSongIdZ:String = "";
+    try { currentSongIdZ = PlayState.instance.currentSong.id.toLowerCase(); } catch (_:Dynamic) {}
+    companionChar.zIndex = carSongsZ.contains(currentSongIdZ) ? stageCharData.zIndex - 1 : stageCharData.zIndex;
+
+    // Detect dark/lightning stages at spawn and cache player char for alpha sync.
+    try
+    {
+      var sid:String = PlayState.instance.currentStage.stageId;
+      _isDarkStage = globalData.isDarkStage.contains(sid);
+      // Always cache player char - needed for alpha sync on dark stages.
+      _cachedPlayerChar = PlayState.instance.currentStage.getBoyfriend();
+    }
+    catch (_:Dynamic) {}
+
+    // Stage-specific position tweaks.
+    var pixelSongs:Array<String> = globalData.pixelSongs;
+    var carSongs:Array<String> = globalData.carSongsZ;
+    var picoStageSongs:Array<String> = globalData.picoStageSongs;
+    var tankmanStageSongs:Array<String> = globalData.tankmanStageSongs;
+    var christmasSongs:Array<String> = globalData.christmasSongs;
+
+    var currentSongId:String = "";
+    try { currentSongId = PlayState.instance.currentSong.id.toLowerCase(); } catch (_:Dynamic) {}
+    var companionId2:String = getSelectedCompanionId();
+
+    var extraXoffset:Float = 0;
+    var extraYoffset:Float = 0;
+
+    // I don't like what im about to do
+    if (pixelSongs.contains(currentSongId)) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.pixelX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.pixelY;
+    }
+
+    if (carSongs.contains(currentSongId)) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.carX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.carY;
+    }
+
+    if (picoStageSongs.contains(currentSongId)) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.picoStageX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.picoStageY;
+    }
+
+    if (tankmanStageSongs.contains(currentSongId)) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.tankmanStageX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.tankmanStageY;
+    }
+
+    if (christmasSongs.contains(currentSongId)) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.christmasX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.christmasY;
+    }
+
+    var xOffset:Float = (christmasSongs.contains(currentSongId) ? 10 : 0) + CompanionHelper.currentCompanionJson.offsets.normalX + extraXoffset;
+
+    var yOffset:Float = CompanionHelper.currentCompanionJson.offsets.normalX + extraYoffset;
+
+    companionChar.x = stageCharData.position[0] - companionChar.characterOrigin.x + 240 + xOffset;
+    companionChar.y = stageCharData.position[1] - companionChar.characterOrigin.y + yOffset;
+
+    // Match scale to main player so size stays consistent.
+    var scaleSet = false;
+    try
+    {
+      var playerChar = PlayState.instance.currentStage.getBoyfriend();
+      if (playerChar?.scale?.x > 0)
+      {
+        companionChar.setScale(playerChar.scale.x);
+        scaleSet = true;
+        trace("[CompanionMode] Matched companion scale to player: " + playerChar.scale.x);
+      }
+    }
+    catch (_:Dynamic) {}
+
+    if (!scaleSet)
+    {
+      var stageScale = (stageCharData.scale != null && stageCharData.scale > 0) ? stageCharData.scale : 1.0;
+      companionChar.setScale(companionChar.getBaseScale() * stageScale);
+    }
+
+    companionChar.originalPosition.set(companionChar.x, companionChar.y);
+    companionChar.resetCameraFocusPoint();
+    companionChar.scrollFactor.x = stageCharData.scroll[0];
+    companionChar.scrollFactor.y = stageCharData.scroll[1];
+
+    // Register as "bf2" so stage scripts (e.g. lightning flash) include the companion.
+    stage.characters.set("bf2", companionChar);
+    stage.addProp(companionChar, "_bf2");
+    // Refresh so the stage's named prop lookup finds _bf2 immediately.
+    try { stage.refresh(); } catch (_:Dynamic) {}
+    stage.refresh();
+  }
+
+  function _spawnStrumlineAndVocals(companionId:String)
+  {
+    var noteData:Array<Dynamic> = [];
+    var variation          = companionToVariation(companionId);
+    var vocalVariation:String = variation;
+    var gotVariationChart  = false;
+
+    try
+    {
+      var song         = PlayState.instance.currentSong;
+      var curDiff      = PlayState.instance.currentDifficulty;
+      var diffFallbacks = [curDiff, "hard", "normal", "easy"];
+
+      // ── Vocals: companion variation → erect (only for erect-native chars) → default
+      var allowErectFallback = (vocalVariation == "erect" || vocalVariation == "default");
+      var vocalFallbacks:Array<String> = allowErectFallback
+        ? [vocalVariation, "erect", "default"]
+        : [vocalVariation, "default"];
+      var vocalDone = false;
+      for (tryVar in vocalFallbacks)
+      {
+        if (tryVar == null || vocalDone) continue;
+        var vd:Dynamic = null;
+        for (d in diffFallbacks) { vd = song.getDifficulty(d, tryVar); if (vd != null) break; }
+        if (vd == null) continue;
+
+        // Same player-verification check for vocals.
+        try
+        {
+          var chartPlayer:String = "";
+          try { chartPlayer = Std.string(vd.characters.player); } catch(_:Dynamic) {}
+          if (chartPlayer != "" && chartPlayer != "null")
+          {
+            var compRoot = companionId.split("-")[0];
+            var valid = (chartPlayer == companionId)
+                     || chartPlayer == compRoot
+                     || chartPlayer.startsWith(compRoot + "-")
+                     || chartPlayer.startsWith(compRoot + "train")
+                     || (compRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName))
+                     || (companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) &&  CompanionHelper.currentCompanionJson.checkSavedRoot)
+                     || (companionId ==  CompanionHelper.currentCompanionJson.baseCharacter && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName) &&  CompanionHelper.currentCompanionJson.playableVerifiactionCheck);
+            if (!valid) vd = null;
+          } 
+        }
+        catch (_:Dynamic) {}
+        if (vd == null) continue;
+
+        loadCompanionVocals(vd, tryVar);
+        vocalDone = true;
+      }
+
+      // ── Notes: companion variation → current song variation → default
+      // Also try currentVariation so companions work when e.g. Pico is the freeplay char.
+      var curSongVariation:String = "default";
+      try { curSongVariation = PlayState.instance.currentVariation; } catch (_:Dynamic) {}
+      if (curSongVariation == null) curSongVariation = "default";
+      // Skip curSongVariation if it belongs to a different companion
+      // (e.g. BF companion + BF2 player gives curSongVariation == "fnf2").
+      var curVarIsOtherCompanion = (curSongVariation != "default")
+          && (curSongVariation != variation)
+          && (companionToVariation(companionId) != curSongVariation);
+      if (curVarIsOtherCompanion) curSongVariation = "default";
+      var variationFallbacks:Array<String> = [variation];
+      if (curSongVariation != variation && curSongVariation != "default")
+        variationFallbacks.push(curSongVariation);
+      variationFallbacks.push("default");
+      for (tryVariation in variationFallbacks)
+      {
+        if (tryVariation == null) continue;
+        var diff2:Dynamic = null;
+        for (tryDiff in diffFallbacks)
+        {
+          diff2 = song.getDifficulty(tryDiff, tryVariation);
+          if (diff2 != null) break;
+        }
+        if (diff2 == null) continue;
+
+        // Verify the chart player actually belongs to this companion.
+        try
+        {
+          var chartPlayer:String = Std.string(diff2.characters.player ?? "");
+          var compRoot = companionId.split("-")[0];
+          var chartPlayerMatchesRoot = (chartPlayer == compRoot)
+              || chartPlayer.startsWith(compRoot + "-");
+          if (chartPlayer != "" && chartPlayer != companionId
+              && !chartPlayerMatchesRoot
+              && chartPlayer !=  CompanionHelper.currentCompanionJson.specificPlayerName + "-train"
+              && !(companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) &&  CompanionHelper.currentCompanionJson.checkSavedRoot)
+              && !(companionId ==  CompanionHelper.currentCompanionJson.baseCharacter && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName) &&  CompanionHelper.currentCompanionJson.playableVerifiactionCheck))
+          {
+            diff2 = null;
+          }
+        }
+        catch (_:Dynamic) {}
+        if (diff2 == null) continue;
+
+        gotVariationChart  = true;
+        companionEvents    = diff2.events;
+
+        var noteDiff2 = song.getDifficulty(curDiff, tryVariation) ?? diff2;
+        for (songNote in noteDiff2.notes)
+        {
+          var strumTime:Float = songNote.time;
+          if (strumTime < PlayState.instance.startTime) continue;
+
+          var scoreable = true;
+          if (songNote.kind != null)
+          {
+            var noteKind:Null<NoteKind> = NoteKindManager.getNoteKind(songNote.kind ?? "");
+            if (noteKind != null) scoreable = noteKind.scoreable;
+          }
+          if (!scoreable) continue;
+
+          var noteDataInt:Int = songNote.data;
+          switch (songNote.getStrumlineIndex())
+          {
+            case 0:
+              if (PlayState.instance.mirrorSongData)
+                songNote.data = GRhythmUtil.mirrorNoteDirection(noteDataInt);
+              noteData.push(songNote);
+          }
+        }
+        break;
+      }
+    }
+    catch (_:Dynamic) {}
+
+    // Use hidden strumline if companion notes are disabled in preferences.
+    var notesOn:Bool = _showCompanionNotes();
+    companionStrumline = notesOn ? _makeVisibleStrumline() : _makeHiddenStrumline();
+
+    if (PlayState.instance.playerStrumline == null) return;
+
+    if (gotVariationChart)
+      companionStrumline.applyNoteData(noteData);
+
+    PlayState.instance.add(companionStrumline);
+    if (notesOn) _repositionStrumlines();
+  }
+
+  function _spawnHealthIcon()
+  {
+    if (companionChar == null) return;
+
+    // ── 1. Detect pixel stage ─────────────────────────────────────────────
+    var isPixelStage:Bool = false;
+    try
+    {
+      var noteStyle:String = PlayState.instance.currentChart.noteStyle;
+      // Matches "pixel", "pixel-fred", "pixel-*" etc.
+      isPixelStage = (noteStyle != null && noteStyle.startsWith("pixel"));
+    }
+    catch (_:Dynamic) {}
+
+    // ── 2. Work out which icon image to load ─────────────────────────────
+    var companionId:String = "";
+    try { companionId = companionChar.characterId ?? ""; } catch (_:Dynamic) {}
+
+    // Build fallback list: pixel first (if pixel stage), then non-pixel, then "bf".
+    var tryIds:Array<String> = [];
+    if (isPixelStage) tryIds.push(_iconIdForCompanion(companionId, true));
+    tryIds.push(_iconIdForCompanion(companionId, false));
+    tryIds.push("bf");
+
+    // ── 3. Find a valid image and load it ────────────────────────────────
+    // Paths.image() throws if the asset doesn't exist (V-Slice calls Assets.exists internally).
+    // We rely on that throw to move to the next fallback.
+    var spr:funkin.graphics.FunkinSprite = null;
+    var loadedId:String = null;
+
+    for (tryId in tryIds)
+    {
+      if (tryId == null || tryId == "") continue;
+      try
+      {
+        var testSpr = new funkin.graphics.FunkinSprite(0, 0);
+        testSpr.loadGraphic(Paths.image("icons/icon-" + tryId));
+        if (testSpr.frameWidth < 8) continue;
+        spr = testSpr;
+        loadedId = tryId;
+        break;
+      }
+      catch (_:Dynamic) {}
+    }
+    if (spr == null || loadedId == null) return;
+
+    // ── 4. Slice into two frames: [0]=normal, [1]=losing ─────────────────
+    // Every icon sheet is 2 frames side by side (width = 2 × height).
+    var fw:Int = spr.frameWidth;
+    var fh:Int = spr.frameHeight;
+    if (fw >= fh * 2)
+    {
+      var frameSize:Int = fh;
+      try
+      {
+        spr.loadGraphic(Paths.image("icons/icon-" + loadedId), true, frameSize, frameSize);
+        spr.animation.add("normal", [0], 0, false);
+        spr.animation.add("losing", [1], 0, false);
+        spr.animation.play("normal");
+      }
+      catch (_:Dynamic) {}
+    }
+    else
+    {
+      try
+      {
+        spr.animation.add("normal", [0], 0, false);
+        spr.animation.play("normal");
+      }
+      catch (_:Dynamic) {}
+    }
+
+    spr.setGraphicSize(150, 150);
+    spr.updateHitbox();
+    spr.scrollFactor.set(0, 0);
+    spr.flipX = true;
+    // Pixel icons need nearest-neighbour scaling to stay crisp.
+    try { spr.antialiasing = !isPixelStage; } catch (_:Dynamic) {}
+    spr.alpha = 1.0;
+
+    // ── 5. Camera + zIndex ────────────────────────────────────────────────
+    try
+    {
+      var iconP1 = PlayState.instance.iconP1;
+      if (iconP1 != null)
+      {
+        spr.cameras = iconP1.cameras;
+        spr.zIndex  = iconP1.zIndex;
+      }
+      else
+      {
+        spr.cameras = [PlayState.instance.camHUD];
+      }
+    }
+    catch (_:Dynamic) { try { spr.cameras = [PlayState.instance.camHUD]; } catch (_:Dynamic) {} }
+
+    // ── 6. Add & position ─────────────────────────────────────────────────
+    companionHealthIcon = spr;
+    try { PlayState.instance.add(companionHealthIcon); } catch (_:Dynamic) { companionHealthIcon = null; return; }
+    try { PlayState.instance.refresh(); } catch (_:Dynamic) {}
+    _updateCompanionIconPos();
+  }
+
+  // Maps a companion characterId to its icon filename stem (without "icon-" prefix).
+  // isPixel=true tries pixel variants first.
+  // All mod icons live in COMPANIONS!!!/images/icons/ and are loaded via Paths.image().
+  function _iconIdForCompanion(characterId:String, isPixel:Bool):String
+  {
+    // First try the character JSON's healthIcon.id field (base game chars like pico).
+    try
+    {
+      var hi:Dynamic = companionChar.characterData.healthIcon;
+      if (hi != null)
+      {
+        var hiId:Dynamic = Reflect.field(hi, "id");
+        var s:String = (hiId != null) ? Std.string(hiId) : Std.string(hi);
+        if (s != null && s != "null" && s != "")
+        {
+          // Base game pixel icons follow the "{id}-pixel" pattern (bf-pixel, pico-pixel).
+          if (isPixel) return s + "-pixel";
+          return s;
+        }
+      }
+    }
+    catch (_:Dynamic) {}
+
+   if (isPixel && CompanionHelper.currentCompanionJson.icon.hasPixel) return CompanionHelper.currentCompanionJson.icon.normal + '-pixel';
+   if (CompanionHelper.currentCompanionJson.icon.hasJolly) return CompanionHelper.currentCompanionJson.icon.normal + 'jolly';
+   if (CompanionHelper.currentCompanionJson.icon.hasAlt) return CompanionHelper.currentCompanionJson.icon.normal + 'alt';
+   try { return CompanionHelper.currentCompanionJson.icon.normal; } catch (_:Dynamic) {trace('Icon ended up null: ' + _);}
+
+    // Final fallback
+    return "bf";
+  }
+
+  // Positions the companion icon just to the right of iconP1.
+  // iconP1 slides along the health bar every frame, so we track it here.
+  // iconP1.x is the LEFT edge of the icon (after flipX the hitbox is still width=150).
+  // We sit our icon at iconP1.x + iconP1.width so they're flush with a tiny gap.
+  function _updateCompanionIconPos()
+  {
+    if (companionHealthIcon == null) return;
+    try
+    {
+      if (_cachedIconP1 == null) _cachedIconP1 = PlayState.instance.iconP1;
+      if (_cachedIconP1 == null) return;
+      companionHealthIcon.x = _cachedIconP1.x + _cachedIconP1.width - 90;
+      companionHealthIcon.y = _cachedIconP1.y;
+    }
+    catch (_:Dynamic) {}
+  }
+
+  // ── Vocals ─────────────────────────────────────────────────────────────────
+
+  function loadCompanionVocals(diff2, variation:String)
+  {
+    try
+    {
+      if (PlayState.instance?.vocals == null) return;
+      var songId    = PlayState.instance.currentSong.id;
+      var vocals    = diff2?.characters?.playerVocals;
+      var voiceChar = (vocals == null) ? diff2?.characters?.player : vocals[0];
+      if (voiceChar == null) return;
+
+      var inst:String = null;
+      try { inst = diff2?.characters?.instrumental; } catch (_:Dynamic) {}
+      if (inst == null || inst == "") inst = variation;
+
+      var candidates:Array<String> = [];
+      if (variation != null && variation != "default")
+      {
+        candidates.push('-${inst}-${voiceChar}');
+        if (inst != variation) candidates.push('-${variation}-${voiceChar}');
+        candidates.push('-${voiceChar}-${inst}');
+        candidates.push('-${voiceChar}-${variation}');
+        candidates.push('-${inst}');
+        candidates.push('-${variation}');
+      }
+      candidates.push('-${voiceChar}');
+
+      // For characters whose vocal files use "charName-charName" pattern
+      // (e.g. Voices-hank-hank.ogg), add that as an explicit candidate.
+      candidates.push('-${voiceChar}-${voiceChar}');
+
+      var shortName = voiceChar.split('-')[0];
+      if (shortName != voiceChar)
+      {
+        candidates.push('-${shortName}-${inst}');
+        if (inst != variation) candidates.push('-${shortName}-${variation}');
+        candidates.push('-${shortName}');
+      }
+
+      // Strip trailing digits: "baldi1" -> "baldi", try that as fallback.
+      var strippedName = voiceChar;
+      while (strippedName.length > 0)
+      {
+        var last = strippedName.charCodeAt(strippedName.length - 1);
+        if (last >= 48 && last <= 57) strippedName = strippedName.substr(0, strippedName.length - 1);
+        else break;
+      }
+      if (strippedName != voiceChar && strippedName != "")
+      {
+        candidates.push('-${strippedName}-${strippedName}');
+        candidates.push('-${strippedName}-${inst}');
+        candidates.push('-${strippedName}');
+      }
+
+      if (variation == "default")
+      {
+        var erectDiff = PlayState.instance.currentSong?.getDifficulty("hard", "erect");
+        if (erectDiff != null)
+        {
+          var erectInst:String  = null;
+          try { erectInst = erectDiff?.characters?.instrumental; } catch (_:Dynamic) {}
+          var erectVocals = erectDiff?.characters?.playerVocals;
+          var erectVoice  = (erectVocals == null) ? erectDiff?.characters?.player : erectVocals[0];
+          if (erectInst != null && erectVoice != null && erectInst != "erect" && erectInst != voiceChar)
+          {
+            candidates.push('-${erectInst}-${erectVoice}');
+            candidates.push('-${erectVoice}-${erectInst}');
+          }
+        }
+      }
+
+      var chosen:String = null;
+      for (s in candidates)
+      {
+        var p = Paths.voices(songId, s);
+        if (Assets.exists(p)) { chosen = s; break; }
+      }
+      if (chosen == null) return;
+
+      var voicePath = Paths.voices(songId, chosen);
+      var vol       = (vocalsVolume > 1) ? vocalsVolume - 1.0 : vocalsVolume;
+      companionVocals = FunkinSound.load(voicePath, vol, false, false, false, false, null, null, true);
+      FunkinMemory.cacheSound(voicePath);
+      PlayState.instance.vocals.addOpponentVoice(companionVocals);
+
+      if (vocalsVolume > 1)
+      {
+        companionVocals2 = FunkinSound.load(voicePath, vocalsVolume - 1.0, false, false, false, false, null, null, true);
+        PlayState.instance.vocals.addOpponentVoice(companionVocals2);
+      }
+    }
+    catch (_:Dynamic) {}
+  }
+
+  // ── Update ─────────────────────────────────────────────────────────────────
+
+  override function onUpdate(event:UpdateScriptEvent):Void
+  {
+    super.onUpdate(event);
+
+    if (PlayState.instance == null)          return;
+    if (PlayState.instance.isInCutscene)     return;
+    if (PlayState.instance.subState != null) return;
+    if (companionChar == null || companionStrumline == null) return;
+    if (companionStrumline.notes?.members == null)          return;
+
+    // Poll every frame until BF has a shader, then copy it to the companion.
+    if (!_shaderApplied) _applyStageShaderToCompanion();
+
+
+
+
+
+    // Mirror player colour and colorTransform AFTER all animation calls.
+    // Use cached playerChar reference — getBoyfriend() traverses a map every call.
+    if (_cachedPlayerChar == null)
+      try { _cachedPlayerChar = PlayState.instance.currentStage.getBoyfriend(); } catch (_:Dynamic) {}
+
+    // Color/transform sync every 2 frames — imperceptible at 60fps.
+    if (companionChar != null && _cachedPlayerChar != null && _agcFrame % 4 == 0)
+    {
+      companionChar.color = _cachedPlayerChar.color;
+
+      try
+      {
+        var pct = _cachedPlayerChar.colorTransform;
+        var cct = companionChar.colorTransform;
+        if (pct != null && cct != null)
+        {
+          cct.redMultiplier   = pct.redMultiplier;
+          cct.greenMultiplier = pct.greenMultiplier;
+          cct.blueMultiplier  = pct.blueMultiplier;
+          cct.alphaMultiplier = pct.alphaMultiplier;
+          cct.redOffset       = pct.redOffset;
+          cct.greenOffset     = pct.greenOffset;
+          cct.blueOffset      = pct.blueOffset;
+          cct.alphaOffset     = pct.alphaOffset;
+        }
+        else if (pct != null)
+        {
+          companionChar.colorTransform = pct;
+        }
+      }
+      catch (_:Dynamic) {}
+
+      try { companionChar.alpha = _cachedPlayerChar.alpha; } catch (_:Dynamic) {}
+    }
+
+    // Keep HUD zoomed out only when companion notes are shown.
+    try
+    {
+      var targetZoom:Float = _cachedShowNotes ? 0.85 : 1.0;
+      if (PlayState.instance.camHUD.zoom != targetZoom)
+        PlayState.instance.camHUD.zoom = targetZoom;
+    }
+    catch (_:Dynamic) {}
+
+
+    var dt:Float = event.elapsed;
+
+    // Health icon: follow player icon + handle pulse animation + losing frame.
+    if (companionHealthIcon != null)
+    {
+      // Only reposition every 2 frames — icon moves slowly enough that this is imperceptible.
+      _iconUpdateFrame++;
+      if (_iconUpdateFrame % 2 == 0) _updateCompanionIconPos();
+
+      // Switch between normal/losing frame based on player health (same threshold as HealthIcon).
+      try
+      {
+        var isLosing:Bool = PlayState.instance.health < 0.4; // 0.2 * 2 = 0.4
+        var wantAnim:String = isLosing ? "losing" : "normal";
+        var curAnim:Dynamic = companionHealthIcon.animation.curAnim;
+        var curName:String = (curAnim != null) ? Std.string(curAnim.name) : "";
+        if (curName != wantAnim)
+          try { companionHealthIcon.animation.play(wantAnim); } catch (_:Dynamic) {}
+      }
+      catch (_:Dynamic) {}
+
+      // Decay pulse scale back to 1.
+      if (iconPulseTimer > 0)
+      {
+        iconPulseTimer = Math.max(0, iconPulseTimer - dt);
+        var t          = 1.0 - iconPulseTimer / ICON_PULSE_DUR;
+        // Quick ease-out: scale peaks at 1.25, returns to 1.
+        var s          = 1.0 + 0.25 * (1.0 - t) * (1.0 - t);
+        try { companionHealthIcon.scale.set(s, s); } catch (_:Dynamic) {}
+      }
+    }
+
+    // ── Optimised Auto Gain Control ─────────────────────────────────────────
+    // Uses a single EMA on the amplitude ratio (ref / comp) instead of two
+    // separate EMAs. Avoids a division by tracking the ratio directly.
+    // AGC: run every 3 frames — volume changes don't need per-frame precision.
+    _agcFrame++;
+    if (companionVocals != null && _agcFrame % 3 == 0)
+    {
+      try
+      {
+        // Approximate exp for typical 60fps dt (~0.0167s) to avoid expensive Math.exp.
+        // 1 - e^(-x) ≈ x for small x; error < 1% at typical frame rates.
+        var emaAlpha:Float  = dt / AGC_EMA_TC;
+        var gainAlpha:Float = dt / AGC_GAIN_TC;
+        if (emaAlpha  > 1.0) emaAlpha  = 1.0;
+        if (gainAlpha > 1.0) gainAlpha = 1.0;
+
+        // Reference amplitude: average of all vocal tracks except our own.
+        var refAmp:Float = 0.0;
+        var refCount:Int = 0;
+        try
+        {
+          var vGroup = PlayState.instance.vocals;
+          if (vGroup?.members != null)
+          {
+            for (s in vGroup.members)
+            {
+              if (s == null || s == companionVocals || s == companionVocals2) continue;
+              refAmp += s.amplitudeMag ?? 0.0;
+              refCount++;
+            }
+            if (refCount > 0) refAmp /= refCount;
+          }
+        }
+        catch (_:Dynamic) {}
+
+        var compAmp:Float = 0.0;
+        try { compAmp = companionVocals.amplitudeMag ?? 0.0; } catch (_:Dynamic) {}
+
+        // Update ratio EMA only when both channels are audible.
+        if (refAmp > agcSilenceThresh && compAmp > agcSilenceThresh)
+        {
+          var instantRatio = Math.max(agcMinGain, Math.min(agcMaxGain, refAmp / compAmp));
+          agcRatioEMA += (instantRatio - agcRatioEMA) * emaAlpha;
+        }
+
+        // Slowly ramp actual gain toward the smoothed ratio.
+        agcGain += (agcRatioEMA - agcGain) * gainAlpha;
+        agcGain  = Math.max(agcMinGain, Math.min(agcMaxGain, agcGain));
+
+        companionVocals.volume = agcGain;
+      }
+      catch (_:Dynamic) {}
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Process companion notes: botplay OR co-op player input.
+    var _songPos:Float = companionStrumline.conductorInUse.songPosition;
+
+    // ── Botplay ─────────────────────────────────────────────────────────
+    for (note in companionStrumline.notes.members)
+    {
+      if (note == null || !note.alive) continue;
+      if (note.noteData.time - _songPos > 500) continue;
+      var r = GRhythmUtil.processWindow(note, false);
+      if (r.botplayHit)
+      {
+        var curNoteKind = NoteKindManager.getNoteKind(note.noteData.kind);
+        if (curNoteKind != null)
+        {
+          if (!curNoteKind.noanim)
+          {
+            companionChar.playSingAnimation(note.noteData.getDirection(), false, curNoteKind?.suffix);
+            companionChar.holdTimer = _cachedHoldTime;
+          }
+        }
+        else
+        {
+          companionChar.playSingAnimation(note.noteData.getDirection(), false);
+          companionChar.holdTimer = _cachedHoldTime;
+        }
+        companionStrumline.hitNote(note);
+        if (note.holdNoteSprite != null)
+          companionStrumline.playNoteHoldCover(note.holdNoteSprite);
+        iconPulseTimer = ICON_PULSE_DUR;
+      }
+    }
+
+    var isHoldingNote:Bool = false;
+    for (holdNote in companionStrumline.holdNotes.members)
+    {
+      if (holdNote == null || !holdNote.alive || holdNote.noteData == null) continue;
+      if (companionStrumline.conductorInUse.songPosition > holdNote.strumTime && holdNote.hitNote)
+      {
+        companionStrumline.holdConfirm(holdNote.noteDirection);
+        holdNote.sustainLength = (holdNote.strumTime + holdNote.fullSustainLength)
+                                 - companionStrumline.conductorInUse.songPosition;
+      }
+      if (holdNote.hitNote && holdNote.sustainLength > 0)
+      {
+        isHoldingNote = true;
+        if (companionChar?.isSinging()) companionChar.holdTimer = 0.5;
+      }
+    }
+    // When no hold notes are active and the character is still in a sing pose,
+    // let holdTimer count down naturally — the character engine handles the
+    // idle transition itself once it reaches zero. We only nudge it if it got
+    // stuck unreasonably high (> singTime seconds), which can happen if a note
+    // was missed without a hit being registered.
+    if (!isHoldingNote && companionChar != null)
+    {
+      var maxHold:Float = _cachedHoldTime > 0 ? _cachedHoldTime : 4.0;
+      if (companionChar.holdTimer > maxHold)
+        companionChar.holdTimer = maxHold;
+    }
+
+    // Apply chart PlayAnimation events — skip if all already processed.
+    if (companionEvents != null && companionEvents.length > 0)
+    {
+      var allDone = true;
+      try
+      {
+        var sp = Conductor.instance.songPosition;
+        for (ev in companionEvents)
+        {
+          if (ev == null) continue;
+          if (!ev.activated) allDone = false;
+          if (ev.activated) continue;
+          var evAge:Float = sp - ev.time;
+          if (evAge >= 0)
+          {
+            if (ev.eventKind == "PlayAnimation")
+            {
+              var target = ev.getString("target");
+              if (target == "boyfriend" || target == "bf" || target == "_companion")
+                companionChar.playAnimation(ev.getString("anim"), ev.getBool("force"), ev.getBool("force"));
+            }
+            ev.activated = true;
+          }
+        }
+      }
+      catch (_:Dynamic) {}
+      // Once all events are done, null the array so we stop iterating it.
+      if (allDone) companionEvents = null;
+    }
+
+    // Note: color/colorTransform mirroring removed — it was causing the player
+    // character to get stuck in sing poses by sharing object references.
+  }
+
+  // ── Beat hit ───────────────────────────────────────────────────────────────
+
+  override function onBeatHit(event:SongTimeScriptEvent)
+  {
+    super.onBeatHit(event);
+    // Refresh cached hold time on every beat in case BPM changed.
+    _cachedHoldTime = _getCompanionHoldTime();
+
+
+
+    // Idle dance on beat for characters that aren't currently singing.
+    // Skip for characters that manage their own idle (henry, sonic variants).
+    if (companionChar != null && !companionChar.isSinging())
+    {
+      try
+      {
+        var skipDance = CompanionHelper.currentCompanionJson.skipDance;
+        if (!skipDance)
+        {
+          if (companionChar.hasAnimation("danceLeft") && companionChar.hasAnimation("danceRight"))
+            companionChar.playAnimation((event.beat % 2 == 0) ? "danceLeft" : "danceRight", false, false);
+          else if (companionChar.hasAnimation("idle"))
+            companionChar.playAnimation("idle", false, false);
+        }
+      }
+      catch (_:Dynamic) {}
+    }
+
+    if (companionStrumline != null && Std.isOfType(FlxG.state, PlayState))
+      companionStrumline.onBeatHit();
+  }
+
+
+
+  // ── Stage shader application ──────────────────────────────────────────────
+
+  var _shaderApplied:Bool = false;
+  var _cachedPlayerChar:Dynamic = null;
+  var _isDarkStage:Bool = false;
+  var _cachedHoldTime:Float = 0.0;
+  var _agcFrame:Int = 0; // AGC throttle counter
+
+  // ── Cached per-song values (set once at spawn, never re-read from Save) ──
+  var _cachedShowNotes:Bool   = true;
+  var _cachedCompanionId:String = "bf";
+  var _cachedIconP1:Dynamic   = null;  // cached iconP1 reference
+  var _iconUpdateFrame:Int    = 0;     // throttle icon pos to every 2 frames
+
+  function _applyStageShaderToCompanion()
+  {
+    if (companionChar == null || _shaderApplied) return;
+    try
+    {
+      var playerChar = PlayState.instance.currentStage.getBoyfriend();
+      if (playerChar == null || playerChar.shader == null) return;
+
+      var stageId:String = "";
+      try { stageId = PlayState.instance.currentStage.stageId ?? ""; } catch (_:Dynamic) {}
+
+      if (stageId == "tankmanBattlefieldErect")
+      {
+        // DropShadowShader: needs its own instance per sprite with attachedSprite + onFrameChange.
+        var rim:Dynamic = new DropShadowShader();
+        if (rim == null) return;
+        var bfRim:Dynamic = playerChar.shader;
+        try { rim.setAdjustColor(-46, -38, -25, -20); } catch (_:Dynamic) {}
+        try { rim.color = bfRim.color; } catch (_:Dynamic) { rim.color = 0xFFDFEF3C; }
+        try { rim.angle = bfRim.angle; } catch (_:Dynamic) { rim.angle = 90; }
+        try { rim.threshold = bfRim.threshold; } catch (_:Dynamic) {}
+        try { rim.attachedSprite = companionChar; } catch (_:Dynamic) {}
+        try { rim.updateFrameInfo(companionChar.frame); } catch (_:Dynamic) {}
+        companionChar.shader = rim;
+
+        var companionRef:Dynamic = companionChar;
+        var rimRef:Dynamic = rim;
+        try
+        {
+          companionChar.animation.onFrameChange.add(function()
+          {
+            try { if (companionRef != null && rimRef != null) rimRef.updateFrameInfo(companionRef.frame); }
+            catch (_:Dynamic) {}
+          });
+        }
+        catch (_:Dynamic) {}
+      }
+      else if (stageId == "schoolErect")
+      {
+        // schoolErect DropShadowShader: per-sprite with mask + attachedSprite + onFrameChange.
+        var rim:Dynamic = new DropShadowShader();
+        if (rim == null) return;
+        var bfRim:Dynamic = playerChar.shader;
+        try { rim.setAdjustColor(-66, -10, 24, -23); } catch (_:Dynamic) {}
+        try { rim.color = bfRim.color; } catch (_:Dynamic) { rim.color = 0xFF52351D; }
+        try { rim.antialiasAmt = 0; } catch (_:Dynamic) {}
+        try { rim.distance = bfRim.distance; } catch (_:Dynamic) { rim.distance = 5; }
+        try { rim.angle = 90; } catch (_:Dynamic) {}
+        try { rim.threshold = bfRim.threshold; } catch (_:Dynamic) {}
+        try { rim.maskThreshold = bfRim.maskThreshold; } catch (_:Dynamic) {}
+        try { rim.useAltMask = bfRim.useAltMask; } catch (_:Dynamic) {}
+        try
+        {
+          var cid:String = companionChar.characterId ?? "";
+          var maskPath = (cid == "pico-pixel")
+            ? Paths.image("weeb/erect/masks/picoPixel_mask")
+            : Paths.image("weeb/erect/masks/bfPixel_mask");
+          rim.loadAltMask(maskPath);
+        }
+        catch (_:Dynamic) {}
+        try { rim.attachedSprite = companionChar; } catch (_:Dynamic) {}
+        try { rim.updateFrameInfo(companionChar.frame); } catch (_:Dynamic) {}
+        companionChar.shader = rim;
+
+        var companionRef:Dynamic = companionChar;
+        var rimRef:Dynamic = rim;
+        try
+        {
+          companionChar.animation.onFrameChange.add(function()
+          {
+            try { if (companionRef != null && rimRef != null) rimRef.updateFrameInfo(companionRef.frame); }
+            catch (_:Dynamic) {}
+          });
+        }
+        catch (_:Dynamic) {}
+      }
+      else
+      {
+        // AdjustColorShader and similar shared shaders: safe to assign directly.
+        companionChar.shader = playerChar.shader;
+      }
+
+      _shaderApplied = true;
+    }
+    catch (_:Dynamic) {}
+  }
+
+  // ── Hold time helper ──────────────────────────────────────────────────────
+
+  function _getCompanionHoldTime():Float
+  {
+    // Use the character's own singTime (in beats) converted to seconds.
+    // This matches how the player version holds poses.
+    try
+    {
+      var singTime:Float = companionChar.characterData.singTime ?? 4.0;
+      var bps:Float = Conductor.instance.bpm / 60.0;
+      return singTime / bps;
+    }
+    catch (_:Dynamic) {}
+    return 0.0;
+  }
+
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+
+  function cleanup()
+  {
+    companionEvents = null;
+    agcGain         = 1.0;
+    agcRatioEMA     = 1.0;
+    iconPulseTimer  = 0.0;
+    _shaderApplied      = false;
+    _cachedPlayerChar   = null;
+    _isDarkStage        = false;
+    _cachedHoldTime     = 0.0;
+    _agcFrame           = 0;
+    _cachedShowNotes    = true;
+    _cachedCompanionId  = "bf";
+    _cachedIconP1       = null;
+    _iconUpdateFrame    = 0;
+
+    if (companionVocals != null)  { companionVocals.destroy();  companionVocals  = null; }
+    if (companionVocals2 != null) { companionVocals2.destroy(); companionVocals2 = null; }
+
+    if (companionHealthIcon != null)
+    {
+      try { PlayState.instance.remove(companionHealthIcon); } catch (_:Dynamic) {}
+      companionHealthIcon.destroy();
+      companionHealthIcon = null;
+    }
+
+    if (companionStrumline != null)
+    {
+      // Restore player and opponent strumlines to their default X positions and reset HUD zoom/scroll.
+      try { PlayState.instance.camHUD.zoom = 1.0; } catch (_:Dynamic) {}
+      try { PlayState.instance.camHUD.scroll.y = 0; } catch (_:Dynamic) {}
+      try
+      {
+        var playerSL   = PlayState.instance.playerStrumline;
+        var opponentSL = PlayState.instance.opponentStrumline;
+        if (playerSL != null)   playerSL.x   = FlxG.width - playerSL.width - 50;
+        if (opponentSL != null) opponentSL.x = 50;
+      }
+      catch (_:Dynamic) {}
+
+      try { PlayState.instance.remove(companionStrumline); } catch (_:Dynamic) {}
+      companionStrumline.destroy();
+      companionStrumline = null;
+    }
+
+    if (companionChar != null)
+    {
+      companionChar.destroy();
+      companionChar = null;
+    }
+  }
+}

@@ -1,0 +1,171 @@
+import funkin.modding.module.Module;
+import funkin.ui.freeplay.FreeplayState;
+import funkin.save.Save;
+import flixel.util.FlxTimer;
+
+/**
+ * Patched version of GooeyFreeplayHiding — fixes crashes when CompanionSelector
+ * substate is open. The original script calls grpCapsules/currentCapsule on
+ * FlxG.state.subState without checking if it's actually a FreeplayState first,
+ * which crashes whenever another substate (like our companion picker) is open.
+ */
+class GooeyFreeplayHidingPatched extends Module
+{
+  var songs:Array<String> = ['drippypop-gooey-mix', 'mixd-up', 'comedian-rad-mix', 'saloonatic'];
+  var variations:Array<String> = ['default', 'default', 'default', 'default'];
+  var saveVariations:Array<String> = ['', '', '', ''];
+  var saveDiffs:Array<Array<String>> = [['extra'], ['extra'], ['extra'], ['extra']];
+  var fakeAlbums:Array<String> = [null, null, null, null];
+  var fakeTexts:Array<String> = ['???', '???', '???', '???'];
+  var fakeIcons:Array<String> = ['', '', '', ''];
+  var playMusic:Array<Bool> = [false, false, false, false];
+
+  public function new() { super('FreeplayGooeyHiding'); }
+
+  // Safe check — returns null if subState is not a FreeplayState.
+  function _getFreeplay():Dynamic
+  {
+    try
+    {
+      var sub = FlxG.state.subState;
+      if (sub == null) return null;
+      if (!Std.isOfType(sub, FreeplayState)) return null;
+      return sub;
+    }
+    catch (_:Dynamic) { return null; }
+  }
+
+  var curCap(get, null):Dynamic;
+  function get_curCap()
+  {
+    var fp = _getFreeplay();
+    if (fp == null) return null;
+    try { return fp.currentCapsule; } catch (_:Dynamic) { return null; }
+  }
+
+  var theCaps(get, null):Array<Dynamic>;
+  function get_theCaps()
+  {
+    var caps:Array<Dynamic> = [];
+    var fp = _getFreeplay();
+    if (fp == null) return caps;
+    try
+    {
+      for (cap in fp.grpCapsules.members)
+      {
+        var fdata:Dynamic = null;
+        try { fdata = cap.freeplayData; } catch (_:Dynamic) {}
+        if (fdata == null) continue;
+        var capId:String = "";
+        try { capId = fdata.data.id; } catch (_:Dynamic) {}
+        var capVar:String = "";
+        try { capVar = fdata.curVariation; } catch (_:Dynamic) {}
+        var idx = songs.indexOf(capId);
+        if (idx >= 0 && capVar == variations[idx])
+          caps.push(cap);
+      }
+    }
+    catch (_:Dynamic) {}
+    return caps;
+  }
+
+  function songId(cap:Dynamic):String
+  {
+    try { return cap.freeplayData.data.id; } catch (_:Dynamic) { return ""; }
+  }
+
+  function indOf(cap:Dynamic):Int
+  {
+    return songs.indexOf(songId(cap));
+  }
+
+  function _applyFakeToCap(cap:Dynamic)
+  {
+    if (cap == null) return;
+    var idx = indOf(cap);
+    if (idx < 0) return;
+    try
+    {
+      if (Save.instance.hasBeatenSong(songId(cap), saveDiffs[idx], saveVariations[idx]))
+        return;
+    }
+    catch (_:Dynamic) {}
+    try
+    {
+      if (fakeIcons[idx] == '' || fakeIcons[idx] == null)
+        cap.pixelIcon.alpha = 0;
+      else
+        cap.pixelIcon.setCharacter(fakeIcons[idx]);
+    }
+    catch (_:Dynamic) {}
+    try { cap.songText.text = fakeTexts[idx]; } catch (_:Dynamic) {}
+  }
+
+  function _applyFakeAlbum(cap:Dynamic)
+  {
+    if (cap == null) return;
+    var fp = _getFreeplay();
+    if (fp == null) return;
+    var idx = indOf(cap);
+    if (idx < 0) return;
+    try
+    {
+      if (Save.instance.hasBeatenSong(songId(cap), saveDiffs[idx], saveVariations[idx]))
+        return;
+    }
+    catch (_:Dynamic) {}
+    try { fp.albumRoll.albumId = fakeAlbums[idx]; } catch (_:Dynamic) {}
+    try { if (FlxG.sound.music != null && !playMusic[idx]) FlxG.sound.music.stop(); }
+    catch (_:Dynamic) {}
+  }
+
+  public function onSubStateOpenEnd(event)
+  {
+    super.onSubStateOpenEnd(event);
+    _lastCurCap = null;
+    if (_getFreeplay() == null) return;
+    for (cap in theCaps)
+    {
+      _applyFakeToCap(cap);
+      if (curCap == cap) _applyFakeAlbum(cap);
+    }
+  }
+
+  public function onCapsuleSelected(event):Void
+  {
+    super.onCapsuleSelected(event);
+    if (_getFreeplay() == null) return;
+    var cap:Dynamic = null;
+    try { cap = event.capsule; } catch (_:Dynamic) {}
+    if (cap == null || !theCaps.contains(cap)) return;
+    _applyFakeToCap(cap);
+    _applyFakeAlbum(cap);
+  }
+
+  public function onDifficultySwitch(event):Void
+  {
+    super.onDifficultySwitch(event);
+    if (_getFreeplay() == null) return;
+    for (cap in theCaps)
+    {
+      _applyFakeToCap(cap);
+      if (curCap == cap) _applyFakeAlbum(cap);
+    }
+  }
+
+  var _lastCurCap:Dynamic = null;
+
+  public function onUpdate(event):Void
+  {
+    super.onUpdate(event);
+    // Only act when curCap changes — avoids rebuilding theCaps every frame.
+    var cc = curCap;
+    if (cc == null || cc == _lastCurCap) return;
+    if (_getFreeplay() == null) return;
+    _lastCurCap = cc;
+    for (cap in theCaps)
+    {
+      if (cc == cap) _applyFakeAlbum(cap);
+    }
+  }
+}

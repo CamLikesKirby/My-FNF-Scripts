@@ -1,0 +1,208 @@
+import funkin.modding.module.Module;
+import funkin.ui.story.StoryMenuState;
+import funkin.save.Save;
+import funkin.graphics.FunkinSprite;
+import flixel.FlxG;
+import flixel.group.FlxTypedSpriteGroup;
+import flixel.util.FlxTimer;
+import flixel.math.FlxMath;
+
+/**
+ * CompanionStorySelector — adds companion switcher arrows to the Story Mode menu.
+ * Appears below the difficulty selector. Uses R / SHIFT+R to cycle companions.
+ * No dots shown (story mode UI is simpler).
+ */
+class CompanionStorySelector extends Module
+{
+  var addedObjects:Bool  = false;
+  var storyState:Dynamic = null;
+  var leftArrow:FunkinSprite;
+  var rightArrow:FunkinSprite;
+  var tagSprite:FunkinSprite;
+
+  var currentIndex:Int = 0;
+  var inputCooldown:Int = 0;
+
+  // Mirror the same roster and helpers from CompanionSelector.
+  var COMPANIONS:Array<String> = CompanionHelper.getAllCompanions();
+
+  public function new() { super('CompanionStorySelector'); }
+
+  // ── Nametag path (mirrors CompanionSelector) ──────────────────────────────
+  function _getNametagPath(companionId:String):String
+  {
+    var companionIdJson = CompanionHelper.getCompanionJson(companionId);
+    return companionIdJson.nameTagPath;
+  }
+
+  function _loadNametag(companionId:String)
+  {
+    if (tagSprite == null) return;
+    tagSprite.loadGraphic(Paths.image("companionTags/NOT_AVAILABLE"));
+    tagSprite.scale.set(0.1, 0.1);
+    tagSprite.updateHitbox();
+    var path = _getNametagPath(companionId);
+    if (path == null) return;
+    try
+    {
+      tagSprite.loadGraphic(Paths.image(path));
+      tagSprite.updateHitbox();
+      var sc:Float = (companionId == "bf" || companionId == "pico-playable") ? 1.0 : 0.7;
+      tagSprite.scale.set(sc, sc);
+      tagSprite.updateHitbox();
+    }
+    catch (_:Dynamic) {}
+  }
+
+  function _readSaved():String
+  {
+    var opts = Save.instance.getModOptions("COMPANION-2P");
+    var id:String = null;
+    try { id = opts.companionId; } catch (_:Dynamic) {}
+    CompanionHelper.currentCompanionJson = id != null ? CompanionHelper.getCompanionJson(id) : CompanionHelper.getCompanionJson("bf");
+    return id != null ? id : "bf";
+  }
+
+  function _writeSaved(id:String)
+  {
+    var opts = Save.instance.getModOptions("COMPANION-2P");
+    if (opts == null) opts = {};
+    opts.companionId = id;
+    Save.instance.setModOptions("COMPANION-2P", opts);
+  }
+
+  function _buildInstalledList()
+  {
+    var installed:Array<String> = ["bf", "pico-playable"];
+    for (id in COMPANIONS)
+    {
+      if (id == "bf" || id == "pico-playable") continue;
+      try
+      {
+        if (CompanionHelper.checkCompanionActive(id))
+          installed.push(id);
+      }
+      catch (_:Dynamic) { installed.push(id); }
+    }
+    COMPANIONS = installed;
+  }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+  override function onStateChangeEnd(event)
+  {
+    super.onStateChangeEnd(event);
+    if (!Std.isOfType(event.targetState, StoryMenuState)) return;
+    if (addedObjects) return;
+    addedObjects = true;
+    storyState = event.targetState;
+
+    _buildInstalledList();
+
+    // Load saved companion index.
+    var savedId = _readSaved();
+    var savedIdx = COMPANIONS.indexOf(savedId);
+    currentIndex = savedIdx >= 0 ? savedIdx : 0;
+
+    // Create arrow sprites.
+    leftArrow = new FunkinSprite().loadGraphic(Paths.image("companionArrows/bf"));
+    leftArrow.updateHitbox();
+    storyState.add(leftArrow);
+
+    rightArrow = new FunkinSprite().loadGraphic(Paths.image("companionArrows/bf"));
+    rightArrow.flipX = true;
+    rightArrow.updateHitbox();
+    storyState.add(rightArrow);
+
+    tagSprite = new FunkinSprite();
+    _loadNametag(COMPANIONS[currentIndex]);
+    storyState.add(tagSprite);
+
+    _updatePositions();
+  }
+
+  override function onStateChangeBegin(event)
+  {
+    super.onStateChangeBegin(event);
+    if (!addedObjects) return;
+    addedObjects = false;
+    storyState   = null;
+    leftArrow    = null;
+    rightArrow   = null;
+    tagSprite    = null;
+    COMPANIONS   = CompanionHelper.getAllCompanions();
+  }
+
+  function _updatePositions()
+  {
+    if (storyState == null || leftArrow == null) return;
+    try
+    {
+      // Position below the difficulty selector — use diffSelLeft/Right if accessible,
+      // otherwise fall back to fixed coordinates.
+      var baseY:Float = FlxG.height - 120;
+      var centerX:Float = FlxG.width / 2;
+
+      try
+      {
+        baseY   = storyState.diffSelLeft.y + storyState.diffSelLeft.height + 20;
+        centerX = FlxG.width / 2;
+      }
+      catch (_:Dynamic) {}
+
+      var offsetX:Float = 450;
+      leftArrow.x  = centerX - tagSprite.width / 2 - leftArrow.width - 10 + offsetX;
+      leftArrow.y  = baseY;
+      rightArrow.x = centerX + tagSprite.width / 2 + 10 + offsetX;
+      rightArrow.y = baseY;
+      tagSprite.x  = centerX - tagSprite.width / 2 + offsetX;
+      tagSprite.y  = baseY + leftArrow.height / 2 - tagSprite.height / 2 + 30;
+      leftArrow.y  += 30;
+      rightArrow.y += 30;
+    }
+    catch (_:Dynamic) {}
+  }
+
+  function switchCompanion(change:Int)
+  {
+    if (COMPANIONS.length == 0) return;
+    currentIndex = FlxMath.wrap(currentIndex + change, 0, COMPANIONS.length - 1);
+    var id = COMPANIONS[currentIndex];
+    _writeSaved(id);
+    _loadNametag(id);
+    _updatePositions();
+    try { FunkinSound.playOnce(Paths.sound("scrollMenu")); } catch (_:Dynamic) {}
+  }
+
+  override function onUpdate(event:UpdateScriptEvent)
+  {
+    super.onUpdate(event);
+    if (storyState == null || !addedObjects) return;
+    if (!Std.isOfType(FlxG.state, StoryMenuState)) return;
+
+    _updatePositions();
+
+    if (inputCooldown > 0) { inputCooldown--; return; }
+
+    if (FlxG.keys.justPressed.R)
+    {
+      inputCooldown = 10;
+      switchCompanion(FlxG.keys.pressed.SHIFT ? -1 : 1);
+    }
+
+    // Mobile: tap arrows to switch companion.
+    try
+    {
+      for (touch in FlxG.touches.list)
+      {
+        if (!touch.justPressed) continue;
+        var tp = touch.getPosition();
+        if (leftArrow != null && leftArrow.overlapsPoint(tp, true))
+        { inputCooldown = 10; switchCompanion(-1); break; }
+        if (rightArrow != null && rightArrow.overlapsPoint(tp, true))
+        { inputCooldown = 10; switchCompanion(1); break; }
+      }
+    }
+    catch (_:Dynamic) {}
+  }
+}

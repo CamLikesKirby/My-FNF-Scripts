@@ -1,0 +1,57 @@
+{
+    "baseCharacter": "pico-playable",
+    "nameTagPath": "companionTags/pico-playable",
+    "songVariationName": "pico",
+    "freePlayId": "pico",
+    "specificPlayerName": "",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "checkSavedRoot": false,
+
+    "compatibleSongs": ["2hot","blammed","blazin","bopeebo","cocoa","dadbattle","darnell","eggnog",
+                "fresh","guns","high","lit-up","milf","philly-nice","pico","roses",
+                "satin-panties","senpai","south","spookeez","stress","thorns","tutorial",
+                "ugh","blissful","conquest","sky","wife-forever","manifest"],
+
+    "variants": {
+    "songsInOrder": ["south","spookeez",
+    "cocoa","eggnog","winter-horrorland",
+    "roses","senpai","thorns",
+    "blissful", "conquest"],
+    
+    "variantsInOrder": ["pico-dark","pico-dark",
+    "pico-christmas","pico-christmas","pico-christmas",
+   "pico-pixel","pico-pixel","pico-pixel",
+   "pico-qt","pico-madness"]
+    },
+
+    "icon": {
+    "normal": "pico",
+    "hasPixel": true,
+    "hasJolly": false,
+    "hasAlt": false
+    },
+
+    "offsets": {
+    "normalX": 60,
+    "normalY": 5,
+
+    "carX": 50,
+    "carY": -40,
+
+    "pixelX": 10,
+    "pixelY":0,
+
+    "picoStageX": 70,
+    "picoStageY": -10,
+
+    "tankmanStageX": 5,
+    "tankmanStageY": 20,
+
+    "christmasX": 0,
+    "christmasY": 0
+    }
+}

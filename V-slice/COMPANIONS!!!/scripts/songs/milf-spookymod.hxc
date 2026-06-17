@@ -1,0 +1,87 @@
+import funkin.play.song.Song;
+import funkin.play.PlayState;
+import flixel.FlxG;
+import flixel.util.FlxSave;
+
+class MilfSpookymodMixSong extends Song
+{
+  // Must be declared as a field — assigning to undeclared vars in new() crashes HaxeScript.
+  var save:FlxSave;
+
+  function new()
+  {
+    super('milf', { variation: 'spookymod' });
+    try
+    {
+      save = new FlxSave();
+      save.bind("SpookyUpdatedCheck", "FunkinCrew");
+    }
+    catch (_:Dynamic) {}
+  }
+
+  function onCreate(event:ScriptEvent):Void
+  {
+    super.onCreate(event);
+    try
+    {
+      if (FlxG.onMobile) return;
+      if (PlayState.instance != null && PlayState.instance.currentChart != null)
+      {
+        PlayState.instance.discordRPCAlbum = "https://raw.githubusercontent.com/LeGooeyy/GooeyMixDiscordIcons/refs/heads/main/assets/album-covers/"
+          + PlayState.instance.currentChart.album
+          + ".png?raw=true";
+        PlayState.instance.discordRPCIcon = "https://raw.githubusercontent.com/LeGooeyy/GooeyMixDiscordIcons/refs/heads/main/assets/icons/"
+          + PlayState.instance.currentChart.characters.opponent
+          + ".png?raw=true";
+      }
+    }
+    catch (_:Dynamic) {}
+  }
+
+  public override function isSongNew(currentDifficulty:String, currentVariation:String):Bool
+  {
+    try
+    {
+      if (save == null) return false;
+      if (save.data.beatenMilfUpdated == null)
+      {
+        save.data.beatenMilfUpdated = false;
+        save.flush();
+      }
+      return !save.data.beatenMilfUpdated;
+    }
+    catch (_:Dynamic) {}
+    return false;
+  }
+
+  public override function listAltInstrumentalIds(difficultyId:String, variationId:String):Array<String>
+  {
+    try
+    {
+      if (save != null && save.data.beatenMilfUpdated == true)
+      {
+        var targetDifficulty = getDifficulty(difficultyId, variationId);
+        var alts = targetDifficulty?.characters?.altInstrumentals;
+        return alts != null ? alts : [];
+      }
+    }
+    catch (_:Dynamic) {}
+    return [];
+  }
+
+  public override function onSongEnd(event:CountdownScriptEvent):Void
+  {
+    super.onSongEnd(event);
+    try
+    {
+      if (PlayState.instance == null) return;
+      if (PlayState.instance.isChartingMode || PlayState.instance.isMinimalMode) return;
+      if (save != null)
+      {
+        save.data.beatenMilfUpdated = true;
+        save.flush();
+      }
+    }
+    catch (_:Dynamic) {}
+  }
+}

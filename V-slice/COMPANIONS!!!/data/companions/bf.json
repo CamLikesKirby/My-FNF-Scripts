@@ -1,0 +1,56 @@
+{
+    "baseCharacter": "bf",
+    "nameTagPath": "companionTags/bf",
+    "songVariationName": "",
+    "freePlayId": "bf",
+    "specificPlayerName": "",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "checkSavedRoot": false,
+
+    "compatibleSongs": [],
+
+    "variants": {
+    "songsInOrder": ["south","spookeez",
+    "cocoa","eggnog","winter-horrorland",
+    "satin-panties","high","milf",
+    "roses","senpai","thorns",
+    "blissful","blissful-2021","obliterated"],
+    
+    "variantsInOrder": ["bf-dark","bf-dark",
+    "bf-christmas","bf-christmas","bf-christmas",
+    "bf-car","bf-car","bf-car",
+   "bf-pixel","bf-pixel","bf-pixel",
+   "bf-qt","bf-qt","bf-qt"]
+    },
+
+    "icon": {
+    "normal": "bf",
+    "hasPixel": true,
+    "hasJolly": false,
+    "hasAlt": false
+    },
+
+    "offsets": {
+    "normalX": 40,
+    "normalY": 5,
+
+    "carX": 50,
+    "carY": -40,
+
+    "pixelX": 10,
+    "pixelY":0,
+
+    "picoStageX": 70,
+    "picoStageY": 30,
+
+    "tankmanStageX": 0,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 0
+    }
+}

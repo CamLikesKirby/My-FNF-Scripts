@@ -1,0 +1,23 @@
+import funkin.play.song.Song;
+import flixel.FlxG;
+import funkin.play.PlayState;
+
+class MILFKeshaSong extends Song
+{
+  function new()
+  {
+    super('milf', { variation: 'kesha' });
+  }
+
+  function onSongLoaded(event)
+  {
+    super.onSongLoaded(event);
+    try
+    {
+      if (FlxG.onMobile) return;
+      if (PlayState.instance != null && PlayState.instance.discordRPCAlbum != null)
+        PlayState.instance.discordRPCAlbum = "https://images.squidge.org/images/2025/12/07/keshavol1.png";
+    }
+    catch (_:Dynamic) {}
+  }
+}
