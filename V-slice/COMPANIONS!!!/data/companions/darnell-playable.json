@@ -1,0 +1,81 @@
+{
+    "baseCharacter": "darnell-playable",
+    "nameTagPath": "charSelect/darnellNametag",
+    "songVariationName": "darnell",
+    "freePlayId": "darnell",
+    "specificPlayerName": "",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "assets/data/characters/darnell-playable.json",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["bopeebo","darnell","fresh","high","lit-up","philly-nice","pico",
+                "south","spookeez","tutorial","ugh"],
+
+    "variants": {
+    "songsInOrder": [
+    "blazin",      
+    "bopeebo",          
+    "darnell",            
+    "fresh",              
+    "high",               
+    "lit-up",             
+    "philly-nice",        
+    "pico",               
+    "south",              
+    "spookeez",           
+    "tutorial",          
+    "ugh"              
+  ],
+    
+    "variantsInOrder": [
+    "darnell-blazin",
+    "darnell-playable",
+    "darnell-playable",
+    "darnell-keytar",
+    "darnell-car",
+    "darnell-playable",
+    "darnell-playable",
+    "darnell-playable",
+    "darnell-dark",
+    "darnell-dark",
+    "darnell-playable",
+    "darnell-playable"
+  ]
+},
+
+    "icon": {
+    "normal": "darnell",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": -250,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

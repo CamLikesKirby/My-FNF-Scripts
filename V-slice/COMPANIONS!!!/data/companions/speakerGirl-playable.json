@@ -1,0 +1,57 @@
+{
+    "baseCharacter": "speakerGirl-playable",
+    "nameTagPath": "charSelect/speakerGirlNametag",
+    "songVariationName": "speaker",
+    "freePlayId": "speakergirl",
+    "specificPlayerName": "speakerGirl",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["blammed","darnell","h0tbx","high","no-lif3","pico","satin-panties"],
+
+    "variants": {
+    "songsInOrder": [
+         
+  ],
+    
+    "variantsInOrder": [
+  ]
+},
+
+    "icon": {
+    "normal": "speakerGirl",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 20,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": 0,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

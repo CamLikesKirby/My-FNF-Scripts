@@ -1,0 +1,76 @@
+{
+    "baseCharacter": "sky-playable",
+    "nameTagPath": "charSelect/skyNametag",
+    "songVariationName": "sky",
+    "freePlayId": "sky",
+    "specificPlayerName": "sky",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["2hot","blammed","blazin","blissful","bopeebo","cocoa","dadbattle",
+                "darnell","fresh","guns","high","lit-up","milf","moderato","philly-nice","pico",
+                "roses","senpai","south","stress","thorns","tutorial","ugh"],
+
+    "variants": {
+    "songsInOrder": [
+    "cocoa",
+    "high",   
+    "milf",    
+    "south",  
+    "roses",  
+    "senpai",  
+    "thorns",  
+    "blazin", 
+    "stress" 
+  ],
+    
+    "variantsInOrder": [
+    "sky-christmas",
+    "sky-car",
+    "sky-car",
+    "sky-dark",
+    "sky-pixel",
+    "sky-pixel",
+    "sky-pixel",
+    "sky-blazin",
+    "sky-plush"
+  ]
+},
+
+    "icon": {
+    "normal": "sky",
+    "hasPixel": true,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": -50,
+    "pixelY": -10,
+
+    "picoStageX": 0,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

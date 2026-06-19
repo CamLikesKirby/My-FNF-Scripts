@@ -125,7 +125,7 @@ class CompanionSelector extends Module
         if (opts == null) opts = {};
         opts.companionId = "bf";
         Save.instance.setModOptions("COMPANION-2P", opts);
-        currentCompanionId = "bf";
+       // currentCompanionId = "bf";
       }
     }
     catch (_:Dynamic) {}
@@ -227,6 +227,7 @@ class CompanionSelector extends Module
     var options = Save.instance.getModOptions("COMPANION-2P");
     if (options == null) options = {};
     options.companionId = currentCompanionId;
+    CompanionHelper.currentBaseCompanion = currentCompanionId;
     Save.instance.setModOptions("COMPANION-2P", options);
   }
 
@@ -454,6 +455,7 @@ class CompanionSelector extends Module
   override function onUpdate(event:UpdateScriptEvent)
   {
     super.onUpdate(event);
+
     if (!Std.isOfType(FlxG.state.subState, FreeplayState)) return;
 
     var state = FlxG.state.subState;
@@ -534,6 +536,7 @@ class CompanionSelector extends Module
     if (COMPANIONS.length == 0) return;
     currentIndex      = FlxMath.wrap(currentIndex + change, 0, COMPANIONS.length - 1);
     currentCompanionId = COMPANIONS[currentIndex];
+    
     CompanionHelper.currentCompanionJson = CompanionHelper.getCompanionJson(currentCompanionId);
 
     if (tagSprite != null)

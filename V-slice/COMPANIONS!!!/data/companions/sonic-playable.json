@@ -1,0 +1,82 @@
+{
+    "baseCharacter": "sonic-playable",
+    "nameTagPath": "charSelect/sonicNametag",
+    "songVariationName": "sonic",
+    "freePlayId": "sonic",
+    "specificPlayerName": "sonic",
+    "baseGameAndModFile": false,
+    "skipDance": true,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["bopeebo","cocoa","darnell","eggnog","fresh",
+                "high","philly-nice","pico","satin-panties",
+                "south","spookeez","ugh"],
+
+    "variants": {
+    "songsInOrder": [
+    "bopeebo",      
+    "cocoa",        
+    "darnell",      
+    "eggnog",      
+    "fresh",         
+    "high",             
+    "philly-nice",    
+    "pico",          
+    "satin-panties",     
+    "south",           
+    "spookeez",      
+    "ugh"           
+    ], 
+    
+    "variantsInOrder": [
+    "sonic-playable",  
+    "sonic-christmas", 
+    "sonic-playable",  
+    "sonic-christmas", 
+    "sonic-playable",  
+    "sonic-car",       
+    "sonic-playable",  
+    "sonic-playable",  
+    "sonic-car",      
+    "sonic-playable",  
+    "sonic-playable",  
+    "sonic-playable"
+  ]
+},
+
+    "icon": {
+    "normal": "sonic",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": -50,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

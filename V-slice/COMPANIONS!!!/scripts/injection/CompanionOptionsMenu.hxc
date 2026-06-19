@@ -15,7 +15,7 @@ class CompanionOptionsMenu extends Module
     if (opts == null) opts = {};
     var dirty = false;
     var showNotes:Dynamic = null;
-    try { showNotes = opts.showCompanionNotes; } catch (_:Dynamic) {}
+    try { showNotes = opts.showCompanionNotes; } catch (_:Dynamic) {trace(_);}
     if (showNotes == null) { opts.showCompanionNotes = true; dirty = true; }
     if (dirty) { Save.instance.setModOptions("COMPANION-2P", opts); Save.instance.flush(); }
   }
@@ -29,7 +29,7 @@ class CompanionOptionsMenu extends Module
 
     // ── Add "COMPANIONS!!!" entry below Preferences ───────────────────────
     var optionsPage:Dynamic = null;
-    try { optionsPage = state.optionsCodex.pages.get('options'); } catch (_:Dynamic) {}
+    try { optionsPage = state.optionsCodex.pages.get('options'); } catch (_:Dynamic) {trace(_);}
     if (optionsPage == null) return;
 
     try
@@ -42,8 +42,8 @@ class CompanionOptionsMenu extends Module
       for (i in 0...members.length)
       {
         var lbl:String = "";
-        try { lbl = (members[i].label?.text ?? "").toLowerCase(); } catch (_:Dynamic) {}
-        if (lbl == "") try { lbl = (members[i].text ?? "").toLowerCase(); } catch (_:Dynamic) {}
+        try { lbl = (members[i].label?.text ?? "").toLowerCase(); } catch (_:Dynamic) {trace(_);}
+        if (lbl == "") try { lbl = (members[i].text ?? "").toLowerCase(); } catch (_:Dynamic) {trace(_);}
         if (lbl == "preferences") { prefIdx = i; break; }
       }
 
@@ -65,12 +65,12 @@ class CompanionOptionsMenu extends Module
         optionsPage.items.members.insert(prefIdx + 1, btn);
       }
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic) {trace(_);}
 
     // ── Create the COMPANIONS!!! page ─────────────────────────────────────
     var companionsPage:Dynamic = null;
     try { companionsPage = state.optionsCodex.addPage('companions', new PreferencesMenu()); }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic) {trace(_);}
     if (companionsPage == null) return;
 
     // Clear defaults
@@ -83,7 +83,7 @@ class CompanionOptionsMenu extends Module
       companionsPage.items.clear();
       companionsPage.preferenceItems.clear();
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic) {trace(_);}
 
     // ── Show Companion Notes ──────────────────────────────────────────────
     var currentNotes:Bool = true;
@@ -92,7 +92,7 @@ class CompanionOptionsMenu extends Module
       var v:Dynamic = Save.instance.getModOptions("COMPANION-2P").showCompanionNotes;
       if (v != null) currentNotes = v == true;
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic) {trace(_);}
 
     try
     {
@@ -110,7 +110,7 @@ class CompanionOptionsMenu extends Module
         currentNotes
       );
     }
-    catch (_:Dynamic) {}
+    catch (_:Dynamic) {trace(_);}
 
   }
 }

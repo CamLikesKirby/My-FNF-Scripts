@@ -81,13 +81,14 @@ class CompanionMode extends Module
   {
     super.onSongRetry(event);
     cleanup();
+    
+    CompanionHelper.currentCompanionJson = CompanionHelper.getCompanionJson(CompanionHelper.currentBaseCompanion); // To show any changes made to the json without having to exit and re-enter the song
     // Immediately spawn a placeholder strumline so 3 are always visible from the start.
     _spawnPlaceholderStrumline();
     pendingSpawn = true;
   }
 
-  override function onSongLoaded(event:SongLoadScriptEvent)
-  {
+  override function onSongLoaded(event:SongLoadScriptEvent) {
     super.onSongLoaded(event);
     cleanup();
     pendingSpawn = true;
@@ -98,7 +99,6 @@ class CompanionMode extends Module
     super.onCountdownStart(event);
     if (!pendingSpawn) return;
     pendingSpawn = false;
-
     // Spawn placeholder immediately so 3 strumlines show from beat 1.
     _spawnPlaceholderStrumline();
     // Then replace with the real companion strumline after a tick.
@@ -144,9 +144,9 @@ class CompanionMode extends Module
       try { chartPlayer = diff.characters.player; } catch (_:Dynamic) {}
       var savedRoot = _charRootId(savedId);
       // Never treat fnf2/bf2 as "same as player" — bf2 is the companion, not the main player.
-      var isFnf2Companion = savedRoot ==  CompanionHelper.currentCompanionJson.baseCharacter || savedRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName;
+      var isFnf2Companion = CompanionHelper.currentCompanionJson.isFNF2;
       if (!isFnf2Companion && _charRootId(chartPlayer) == savedRoot) return true;
-      
+
       var variantId = getSelectedCompanionId();
       if (!isFnf2Companion && chartPlayer == variantId) return true;
     }
@@ -266,7 +266,7 @@ class CompanionMode extends Module
         var savedRoot = _charRootId(_readSavedCompanionId());
         var chartRoot = _charRootId(chartPlayer);
         // Never skip for fnf2/bf2 — bf2 IS the companion character, not the main player.
-        var isFnf2Companion = savedRoot ==  CompanionHelper.currentCompanionJson.baseCharacter || savedRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName;
+        var isFnf2Companion = CompanionHelper.currentCompanionJson.isFNF2;
         if (!isFnf2Companion && savedRoot != "" && savedRoot == chartRoot)
         {
           trace("[CompanionMode] Companion root matches chart player — skipping spawn.");
@@ -362,9 +362,9 @@ class CompanionMode extends Module
     }
 
     // If bf2 variant fails (assets not available), try base bf2 or fall back to bf.
-    if (companionChar == null && CompanionHelper.currentCompanionJson.checkSavedRoot && (companionId.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) || companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName))
+    if (companionChar == null && CompanionHelper.currentCompanionJson.isFNF2)
     {
-      try { companionChar = CharacterDataParser.fetchCharacter( CompanionHelper.currentCompanionJson.baseCharacter); } catch (_:Dynamic) {}
+      try { companionChar = CharacterDataParser.fetchCharacter(CompanionHelper.currentCompanionJson.baseCharacter); } catch (_:Dynamic) {}
       if (companionChar == null)
         try { companionChar = CharacterDataParser.fetchCharacter("bf"); } catch (_:Dynamic) {}
     }
@@ -403,17 +403,22 @@ class CompanionMode extends Module
     var currentSongIdZ:String = "";
     try { currentSongIdZ = PlayState.instance.currentSong.id.toLowerCase(); } catch (_:Dynamic) {}
     companionChar.zIndex = carSongsZ.contains(currentSongIdZ) ? stageCharData.zIndex - 1 : stageCharData.zIndex;
-
-    // Detect dark/lightning stages at spawn and cache player char for alpha sync.
+ 
     try
     {
-      var sid:String = PlayState.instance.currentStage.stageId;
-      _isDarkStage = globalData.isDarkStage.contains(sid);
       // Always cache player char - needed for alpha sync on dark stages.
       _cachedPlayerChar = PlayState.instance.currentStage.getBoyfriend();
-    }
-    catch (_:Dynamic) {}
+    } catch (_:Dynamic) {trace('Couldn\'t cache the player!: ' + _);}
 
+    // Detect dark/lightning stages at spawn and cache player char for alpha sync.
+    var sid:String = "";
+    try
+    {
+      sid = PlayState.instance.currentStageId;
+      _isDarkStage = globalData.isDarkStage.contains(sid);
+    } catch (_:Dynamic) {trace('Couldn\'t get Dark Stages: ' + _);}
+    
+  
     // Stage-specific position tweaks.
     var pixelSongs:Array<String> = globalData.pixelSongs;
     var carSongs:Array<String> = globalData.carSongsZ;
@@ -423,12 +428,24 @@ class CompanionMode extends Module
 
     var currentSongId:String = "";
     try { currentSongId = PlayState.instance.currentSong.id.toLowerCase(); } catch (_:Dynamic) {}
-    var companionId2:String = getSelectedCompanionId();
 
     var extraXoffset:Float = 0;
     var extraYoffset:Float = 0;
 
-    // I don't like what im about to do
+     var stages:Map<String, String> = [];
+     
+     var companionIdJson = CompanionHelper.getCompanionJson(CompanionHelper.currentBaseCompanion);
+
+    for (i in 0...companionIdJson.offsets.stagesInOrder.length) {
+        stages.set(companionIdJson.offsets.stagesInOrder[i], companionIdJson.offsets.xys[i]);
+    }
+
+     if (stages.get(sid) != null && stages.get(sid) != "") {
+      var xNy = stages.get(sid);
+      extraXoffset = xNy[0];
+      extraYoffset = xNy[1];
+     } else {
+
     if (pixelSongs.contains(currentSongId)) {
       extraXoffset = CompanionHelper.currentCompanionJson.offsets.pixelX;
       extraYoffset = CompanionHelper.currentCompanionJson.offsets.pixelY;
@@ -454,9 +471,15 @@ class CompanionMode extends Module
       extraYoffset = CompanionHelper.currentCompanionJson.offsets.christmasY;
     }
 
+    if (_isDarkStage) {
+      extraXoffset = CompanionHelper.currentCompanionJson.offsets.spookyX;
+      extraYoffset = CompanionHelper.currentCompanionJson.offsets.spookyY;
+    }
+  }
+
     var xOffset:Float = (christmasSongs.contains(currentSongId) ? 10 : 0) + CompanionHelper.currentCompanionJson.offsets.normalX + extraXoffset;
 
-    var yOffset:Float = CompanionHelper.currentCompanionJson.offsets.normalX + extraYoffset;
+    var yOffset:Float = CompanionHelper.currentCompanionJson.offsets.normalY + extraYoffset;
 
     companionChar.x = stageCharData.position[0] - companionChar.characterOrigin.x + 240 + xOffset;
     companionChar.y = stageCharData.position[1] - companionChar.characterOrigin.y + yOffset;
@@ -533,7 +556,7 @@ class CompanionMode extends Module
                      || chartPlayer.startsWith(compRoot + "-")
                      || chartPlayer.startsWith(compRoot + "train")
                      || (compRoot ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName))
-                     || (companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) &&  CompanionHelper.currentCompanionJson.checkSavedRoot)
+                     || (CompanionHelper.currentCompanionJson.isFNF2)
                      || (companionId ==  CompanionHelper.currentCompanionJson.baseCharacter && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName) &&  CompanionHelper.currentCompanionJson.playableVerifiactionCheck);
             if (!valid) vd = null;
           } 
@@ -581,7 +604,7 @@ class CompanionMode extends Module
           if (chartPlayer != "" && chartPlayer != companionId
               && !chartPlayerMatchesRoot
               && chartPlayer !=  CompanionHelper.currentCompanionJson.specificPlayerName + "-train"
-              && !(companionId ==  CompanionHelper.currentCompanionJson.specificPlayerName && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.baseCharacter) &&  CompanionHelper.currentCompanionJson.checkSavedRoot)
+              && !(CompanionHelper.currentCompanionJson.isFNF2)
               && !(companionId ==  CompanionHelper.currentCompanionJson.baseCharacter && chartPlayer.startsWith( CompanionHelper.currentCompanionJson.specificPlayerName) &&  CompanionHelper.currentCompanionJson.playableVerifiactionCheck))
           {
             diff2 = null;
@@ -760,9 +783,19 @@ class CompanionMode extends Module
     }
     catch (_:Dynamic) {}
 
+     var songsNIcons:Map<String, String> = [];
+     var songId:String = null;
+     try { songId = PlayState.instance.currentSong.id.toLowerCase(); } catch (_:Dynamic) {trace(_);}
+
+     var companionIdJson = CompanionHelper.getCompanionJson(CompanionHelper.currentBaseCompanion);
+
+    for (i in 0...companionIdJson.icon.songsInOrder.length) {
+        songsNIcons.set(companionIdJson.icon.songsInOrder[i], companionIdJson.icon.uniqueIconsInOrder[i]);
+    }
+
    if (isPixel && CompanionHelper.currentCompanionJson.icon.hasPixel) return CompanionHelper.currentCompanionJson.icon.normal + '-pixel';
-   if (CompanionHelper.currentCompanionJson.icon.hasJolly) return CompanionHelper.currentCompanionJson.icon.normal + 'jolly';
-   if (CompanionHelper.currentCompanionJson.icon.hasAlt) return CompanionHelper.currentCompanionJson.icon.normal + 'alt';
+   if (isPixel && !(CompanionHelper.currentCompanionJson.icon.hasPixel == false || CompanionHelper.currentCompanionJson.icon.hasPixel == true || CompanionHelper.currentCompanionJson.icon.hasPixel == null)) return CompanionHelper.currentCompanionJson.icon.hasPixel;
+   if (songsNIcons.get(songId) != null && songsNIcons.get(songId) != "") return songsNIcons.get(songId);
    try { return CompanionHelper.currentCompanionJson.icon.normal; } catch (_:Dynamic) {trace('Icon ended up null: ' + _);}
 
     // Final fallback
@@ -892,7 +925,7 @@ class CompanionMode extends Module
     if (PlayState.instance.subState != null) return;
     if (companionChar == null || companionStrumline == null) return;
     if (companionStrumline.notes?.members == null)          return;
-
+     
     // Poll every frame until BF has a shader, then copy it to the companion.
     if (!_shaderApplied) _applyStageShaderToCompanion();
 
@@ -966,13 +999,27 @@ class CompanionMode extends Module
       }
       catch (_:Dynamic) {}
 
+    var isPixelStage:Bool = false;
+    try
+    {
+      var noteStyle:String = PlayState.instance.currentChart.noteStyle;
+      // Matches "pixel", "pixel-fred", "pixel-*" etc.
+      isPixelStage = (noteStyle != null && noteStyle.startsWith("pixel"));
+    }
+    catch (_:Dynamic) {}
+
+    // Keeps the pixel icon at a normal size
+    var muti:Int = 1;
+    if (isPixelStage) muti = 5;
+
       // Decay pulse scale back to 1.
+      // yooo
       if (iconPulseTimer > 0)
       {
         iconPulseTimer = Math.max(0, iconPulseTimer - dt);
-        var t          = 1.0 - iconPulseTimer / ICON_PULSE_DUR;
+        var t          = ((1.0 * muti) - iconPulseTimer / ICON_PULSE_DUR);
         // Quick ease-out: scale peaks at 1.25, returns to 1.
-        var s          = 1.0 + 0.25 * (1.0 - t) * (1.0 - t);
+        var s          = (1.0 * muti) + 0.25 * ((1.0 * muti) - t) * ((1.0 * muti) - t);
         try { companionHealthIcon.scale.set(s, s); } catch (_:Dynamic) {}
       }
     }

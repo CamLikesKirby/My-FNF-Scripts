@@ -9,7 +9,7 @@
     "modFolder": "",
     "playerFileReplacement": "",
     "playableVerifiactionCheck": false,
-    "checkSavedRoot": false,
+    "isFNF2": false,
 
     "compatibleSongs": [],
 
@@ -30,27 +30,33 @@
     "icon": {
     "normal": "bf",
     "hasPixel": true,
-    "hasJolly": false,
-    "hasAlt": false
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
     },
 
     "offsets": {
-    "normalX": 40,
+    "normalX": 100,
     "normalY": 5,
 
-    "carX": 50,
-    "carY": -40,
+    "carX": 0,
+    "carY": 0,
 
-    "pixelX": 10,
-    "pixelY":0,
+    "pixelX": 0,
+    "pixelY": -10,
 
-    "picoStageX": 70,
-    "picoStageY": 30,
+    "picoStageX": 0,
+    "picoStageY": 10,
 
     "tankmanStageX": 0,
     "tankmanStageY": 0,
 
     "christmasX": 0,
-    "christmasY": 0
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
     }
 }

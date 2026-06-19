@@ -1,0 +1,71 @@
+{
+    "baseCharacter": "bf2",
+    "nameTagPath": "charSelect/fnf2Nametag",
+    "songVariationName": "fnf2",
+    "freePlayId": "fnf2",
+    "specificPlayerName": "",
+    "baseGameAndModFile": true,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": true,
+
+    "compatibleSongs": ["bopeebo","cocoa","dadbattle","darnell","fresh","guns",
+                "high","pico","roses","spookeez","stress","thorns"],
+
+    "variants": {
+    "songsInOrder": [
+    "cocoa",    
+    "high",    
+    "roses",    
+    "senpai",  
+    "thorns",   
+    "spookeez", 
+    "south"    
+  ],
+    
+    "variantsInOrder": [
+    "bf2-christmas",
+    "bf2-car",
+    "bf2-pixel",
+    "bf2-pixel",
+    "bf2-pixel",
+    "bf2-dark",
+    "bf2-dark"
+  ]
+},
+
+    "icon": {
+    "normal": "bf2",
+    "hasPixel": true,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": -30,
+    "pixelY": -30,
+
+    "picoStageX": -20,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

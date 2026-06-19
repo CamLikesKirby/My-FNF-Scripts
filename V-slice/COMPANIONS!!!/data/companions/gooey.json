@@ -9,7 +9,7 @@
     "modFolder": "",
     "playerFileReplacement": "",
     "playableVerifiactionCheck": false,
-    "checkSavedRoot": false,
+    "isFNF2": false,
 
     "compatibleSongs": ["blammed","blissful","bopeebo","cocoa","dadbattle","eggnog",
                 "fresh","guns","high","milf","philly-nice","pico","roses","satin-panties",
@@ -32,19 +32,19 @@
     "icon": {
     "normal": "gooey",
     "hasPixel": true,
-    "hasJolly": false,
-    "hasAlt": false
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
     },
 
     "offsets": {
-    "normalX": 0,
-    "normalY": 0,
+    "normalX": 50,
+    "normalY": 20,
 
     "carX": 0,
     "carY": 0,
 
     "pixelX": 0,
-    "pixelY":0,
+    "pixelY":20,
 
     "picoStageX": 0,
     "picoStageY": 0,
@@ -53,6 +53,12 @@
     "tankmanStageY": 0,
 
     "christmasX": 0,
-    "christmasY": 0
+    "christmasY": 0,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
     }
 }

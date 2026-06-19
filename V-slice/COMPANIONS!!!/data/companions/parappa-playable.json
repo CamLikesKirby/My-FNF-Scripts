@@ -1,0 +1,58 @@
+{
+    "baseCharacter": "parappa-playable",
+    "nameTagPath": "charSelect/parappaNametag",
+    "songVariationName": "parappa",
+    "freePlayId": "parappa",
+    "specificPlayerName": "parappa",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["bopeebo","dadbattle","darnell","fresh","pico","south"],
+
+    "variants": {
+    "songsInOrder": [
+   "south"       
+  ],
+    
+    "variantsInOrder": [
+   "parappa-dark"
+  ]
+},
+
+    "icon": {
+    "normal": "parappa",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 180,
+    "normalY": 30,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": 0,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 70,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

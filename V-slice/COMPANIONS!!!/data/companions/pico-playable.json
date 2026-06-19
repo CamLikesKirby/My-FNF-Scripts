@@ -9,7 +9,7 @@
     "modFolder": "",
     "playerFileReplacement": "",
     "playableVerifiactionCheck": false,
-    "checkSavedRoot": false,
+    "isFNF2": false,
 
     "compatibleSongs": ["2hot","blammed","blazin","bopeebo","cocoa","dadbattle","darnell","eggnog",
                 "fresh","guns","high","lit-up","milf","philly-nice","pico","roses",
@@ -31,27 +31,33 @@
     "icon": {
     "normal": "pico",
     "hasPixel": true,
-    "hasJolly": false,
-    "hasAlt": false
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
     },
 
     "offsets": {
-    "normalX": 60,
-    "normalY": 5,
+    "normalX": 125,
+    "normalY": 15,
 
-    "carX": 50,
-    "carY": -40,
+    "carX": 0,
+    "carY": 0,
 
-    "pixelX": 10,
-    "pixelY":0,
+    "pixelX": -90,
+    "pixelY":25,
 
-    "picoStageX": 70,
-    "picoStageY": -10,
+    "picoStageX": 0,
+    "picoStageY": 10,
 
-    "tankmanStageX": 5,
-    "tankmanStageY": 20,
+    "tankmanStageX": 0,
+    "tankmanStageY": 10,
 
     "christmasX": 0,
-    "christmasY": 0
+    "christmasY": 15,
+
+    "spookyX": 0,
+    "spookyY": 38,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
     }
 }

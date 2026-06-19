@@ -1,0 +1,65 @@
+{
+    "baseCharacter": "kesha",
+    "nameTagPath": "charSelect/keshaNametag",
+    "songVariationName": "kesha",
+    "freePlayId": "kesha",
+    "specificPlayerName": "",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["blammed","bopeebo","dadbattle","darnell","fresh","milf",
+                "philly-nice","pico","satin-panties","south","spookeez","ugh"],
+
+    "variants": {
+    "songsInOrder": [
+    "milf",          
+    "satin-panties", 
+    "south",        
+    "spookeez"          
+  ],
+    
+    "variantsInOrder": [
+    "kesha-car",
+    "kesha-car",
+    "kesha-dark",
+    "kesha-dark"
+  ]
+},
+
+    "icon": {
+    "normal": "kesha",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 160,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": 0,
+    "picoStageY": 0,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": 0,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}

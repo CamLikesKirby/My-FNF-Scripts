@@ -1,0 +1,66 @@
+{
+    "baseCharacter": "steven",
+    "nameTagPath": "charSelect/stevenNametag",
+    "songVariationName": "steven",
+    "freePlayId": "steven",
+    "specificPlayerName": "steven",
+    "baseGameAndModFile": false,
+    "skipDance": false,
+    "modFolder": "",
+    "playerFileReplacement": "",
+    "playableVerifiactionCheck": false,
+    "isFNF2": false,
+
+    "compatibleSongs": ["2hot","8xm","amethyst","blammed","bopeebo","cocoa","dadbattle",
+                "darnell","eggnog","fresh","guns","high","lit-up","milf","out-4-pizzas",
+                "philly-nice","satin-panties","south","spookeez"],
+
+    "variants": {
+    "songsInOrder": [
+    "cocoa",        
+    "eggnog",      
+    "south",        
+    "spookeez"          
+  ],
+    
+    "variantsInOrder": [
+    "steven-winter",
+    "steven-winter",
+    "steven-dark",
+    "steven-dark"
+  ]
+},
+
+    "icon": {
+    "normal": "steven",
+    "hasPixel": false,
+    "songsInOrder": [],
+    "uniqueIconsInOrder": []
+    },
+
+    "offsets": {
+    "normalX": 160,
+    "normalY": 20,
+
+    "carX": -50,
+    "carY": 0,
+
+    "pixelX": 0,
+    "pixelY": -10,
+
+    "picoStageX": -20,
+    "picoStageY": -20,
+
+    "tankmanStageX": -30,
+    "tankmanStageY": 0,
+
+    "christmasX": -40,
+    "christmasY": 10,
+
+    "spookyX": 0,
+    "spookyY": 0,
+    
+    "stagesInOrder": ["example"],
+    "xys": [[0,0]]
+    }
+}
