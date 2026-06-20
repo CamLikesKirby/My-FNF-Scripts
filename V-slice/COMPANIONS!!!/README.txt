@@ -1,1 +1,0 @@
-This is a VERY early version of a more softcoded version of this mod. This will have a lot of issues so be aware.

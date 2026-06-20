@@ -1,0 +1,55 @@
+import funkin.modding.module.Module;
+import funkin.ui.options.OptionsState;
+import flixel.util.FlxSave;
+import funkin.util.Constants;
+// From https://gamebanana.com/mods/521810
+
+class MemoriamOptions extends Module
+{
+    public function new()
+    {
+        super('MemoriamOptions');
+    }
+
+    public static var memoriamOptions:FlxSave = new FlxSave();
+
+    public function onStateChangeEnd(event:StateChangeScriptEvent)
+    {
+        saveShit();
+
+        if(Std.isOfType(event.targetState, OptionsState) && event.targetState.optionsCodex.pages.get("preferences") != null)
+        {
+
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Restart Automatically', 
+            "If enabled, will make the game restart automatically on death.", function(value:Bool):Void
+            {
+            memoriamOptions.data.autoRestart = value;
+            memoriamOptions.flush();
+            }, memoriamOptions.data.autoRestart);
+    
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Very Very Sad Music', 
+            "If enabled, will play the Very Very Sad Music on death.", function(value:Bool):Void
+            {
+            memoriamOptions.data.mus = value;
+            memoriamOptions.flush();
+            }, memoriamOptions.data.mus);
+
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemNumber('Time Before Reset', 
+            'The time before the death screen goes back to the beginning of the song.',
+            function(value:Float)
+            {
+            memoriamOptions.data.timer = value;
+            memoriamOptions.flush();
+            }, null, memoriamOptions.data.timer, 1, 60, 0.5, 0);
+        }
+    }
+
+    override function onStateChangeBegin(event:StateChangeScriptEvent) { super.onStateChangeBegin(event); saveShit(); }
+
+    public static function saveShit() {
+    memoriamOptions.bind(Constants.SAVE_NAME + "memoriamOptions", Constants.SAVE_PATH);
+    if (memoriamOptions.data.autoRestart == null) memoriamOptions.data.autoRestart = true;
+    if (memoriamOptions.data.mus == null) memoriamOptions.data.mus = true;
+    if (memoriamOptions.data.timer == null) memoriamOptions.data.timer = 5.5;
+    }
+}

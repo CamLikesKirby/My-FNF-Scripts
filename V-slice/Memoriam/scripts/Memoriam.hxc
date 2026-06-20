@@ -12,10 +12,16 @@ import funkin.Paths;
 import Date;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
+import flixel.util.FlxSave;
 import funkin.input.Controls;
+import MemoriamOptions;
+import funkin.play.PauseSubState;
 
 class Memoriam extends ScriptedModule
 {
+	// Guess
+	public static var amountOfDeaths:Int = 0;
+
 	// Bool that helps other functions to detect if the player is in the custom death screen
 	var inMemoriam:Bool = false;
 
@@ -28,26 +34,75 @@ class Memoriam extends ScriptedModule
 	// The death text showing the characters name, the time where the song starts and when the song ends
 	var deathText:FlxText;
 
+	// The amount off time before the state resets
+	var resetTimer:Float = 5.5;
+
 	public function new()
 	{
-		super("Mem");
+	super("Mem");
 	}
-	
+
+	override function onCountdownStart(event:CountdownScriptEvent):Void
+    {
+        super.onCountdownStart(event);
+	    try {
+        var game = PlayState.instance;
+
+		var bf = game.currentStage.getBoyfriend();
+
+		resetTimer = MemoriamOptions.memoriamOptions.data.timer;
+
+        game.deathCounter = amountOfDeaths;
+		inMemoriam = false; 
+		
+		bf.isDead = false; 
+        
+		// The actual "isInCountdown" var is broken I think, so I made this
+		actualIsInCountDown = true;
+
+	    Constants.HEALTH_MIN = -1;
+		birthDate = Date.now();
+	} catch (e:Dynamic) { 
+		trace('Couldn\'t start onCountdownStart for Memoriam, are you in minimal mode?: ' + e); 
+		Constants.HEALTH_MIN = 0; 
+	}
+    }
+
 	override function onUpdate(e:ScriptEvent):Void
     {
 	var game = PlayState.instance;
 	if (game == null) return;
 
+	try {
 	var bf = game.currentStage.getBoyfriend();
 	// copies the normal gameover and prepares the memoriam game over
     if (game.health <= Constants.HEALTH_MIN + 1 && !inMemoriam && !game.isPracticeMode) prepareMemoriam();
-    if (inMemoriam) bf.animation.pause(); // freezes BF #1
+    if (inMemoriam) {
+    bf.animation.pause(); // freezes BF #1
+	game.health = 0.1;
 	}
+	if (inMemoriam && (FlxG.keys.justPressed.SPACE || FlxG.keys.justPressed.ENTER || FlxG.mouse.justPressed)) FlxG.resetState();
+    } catch (e:Dynamic) {}
+	}
+
+    override function onCountdownEnd(event: CountdownScriptEvent):Void
+    { 
+	// The actual "isInCountdown" var is broken I think, so I made this
+	super.onCountdownEnd(event); 
+	new FlxTimer().start(1, function(_) { actualIsInCountDown = false; });
+	}
+
+	override function onStateChangeBegin(event:StateChangeScriptEvent)
+    {
+    super.onStateChangeBegin(event);
+	var game = PlayState.instance;
+	if (game == null) amountOfDeaths = 0;
+    }
 
 	function prepareMemoriam() {
 	var game = PlayState.instance;
-	game.health = Constants.HEALTH_MIN + 1.1;
-
+    game.health = 0.1;
+	
 	if (actualIsInCountDown) return; // not a good way to fix the countdown bug but it works
 
 	game.vocals?.pause();
@@ -90,7 +145,7 @@ class Memoriam extends ScriptedModule
     deathText.color = FlxColor.WHITE;
 	deathText.size = 45;
 	deathText.alpha = 0;
-	deathText.cameras = [game.camSubtitles];
+	deathText.cameras = [game.camCutscene];
     deathText.borderColor = FlxColor.BLACK;
 	deathText.borderStyle = FlxTextBorderStyle.OUTLINE;
     game.add(deathText);
@@ -105,7 +160,7 @@ class Memoriam extends ScriptedModule
 	try { bf.isDead = true; } catch (e:Dynamic) { trace('Couldn\'t set the bf.isDead variable to true: ' + e); }
 
 	inMemoriam = true;
-	game.deathCounter += 1;
+	amountOfDeaths += 1;
 	startMemoriam();
 	}
 
@@ -113,36 +168,15 @@ class Memoriam extends ScriptedModule
 	var game = PlayState.instance;
     var bf = game.currentStage.getBoyfriend();
 
-	FunkinSound.playOnce(Paths.sound('deathMusic'));
+	if (MemoriamOptions.memoriamOptions.data.mus) FunkinSound.playOnce(Paths.sound('deathMusic'));
     
     FlxTween.tween(bf, {alpha: 1}, 5.5, {ease: FlxEase.circOut});
     FlxTween.tween(deathText, {alpha: 1}, 5, {ease: FlxEase.circIn});
       
-	new FlxTimer().start(5.5, function(_) { FlxG.resetState(); });
+	if (MemoriamOptions.memoriamOptions.data.autoRestart) restartTimer(resetTimer);
 	}
 
-	override function onCountdownEnd(event: CountdownScriptEvent):Void
-    { 
-	// The actual "isInCountdown" var is broken I think, so I made this
-	super.onCountdownEnd(event); 
-	new FlxTimer().start(1, function(_) { actualIsInCountDown = false; });
+	function restartTimer(timeUntiReset:Float) {
+	new FlxTimer().start(timeUntiReset, function(_) { FlxG.resetState();}); 
 	}
-
-	override function onCountdownStart(event:CountdownScriptEvent):Void
-    {
-        super.onCountdownStart(event);
-        var game = PlayState.instance;
-		var bf = game.currentStage.getBoyfriend();
-
-        // if (inMemoriam) game.deathCounter += 1;
-		inMemoriam = false; 
-		
-		try { bf.isDead = false; } catch (e:Dynamic) { trace('Couldn\'t set the bf.isDead variable to false: ' + e); }
-
-		// The actual "isInCountdown" var is broken I think, so I made this
-		actualIsInCountDown = true;
-
-	    Constants.HEALTH_MIN = -1;
-		birthDate = Date.now();
-    }
 }
