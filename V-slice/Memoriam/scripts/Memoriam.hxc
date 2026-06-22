@@ -13,9 +13,10 @@ import Date;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxSave;
-import funkin.input.Controls;
 import MemoriamOptions;
 import funkin.play.PauseSubState;
+import funkin.play.PlayStatePlaylist;
+import Std;
 
 class Memoriam extends ScriptedModule
 {
@@ -45,23 +46,25 @@ class Memoriam extends ScriptedModule
 	override function onCountdownStart(event:CountdownScriptEvent):Void
     {
         super.onCountdownStart(event);
+		
+        birthDate = Date.now();
+		resetTimer = MemoriamOptions.memoriamOptions.data.timer;
+		inMemoriam = false; 
+
 	    try {
         var game = PlayState.instance;
+		game.deathCounter = amountOfDeaths;
 
 		var bf = game.currentStage.getBoyfriend();
-
-		resetTimer = MemoriamOptions.memoriamOptions.data.timer;
-
-        game.deathCounter = amountOfDeaths;
-		inMemoriam = false; 
+		var dad = game.currentStage.getDad();
 		
 		bf.isDead = false; 
+		dad.isDead = false;
         
-		// The actual "isInCountdown" var is broken I think, so I made this
 		actualIsInCountDown = true;
 
-	    Constants.HEALTH_MIN = -1;
-		birthDate = Date.now();
+	     if (MemoriamOptions.memoriamOptions.data.playerMem) Constants.HEALTH_MIN = -1;
+	     else Constants.HEALTH_MIN = 0; 
 	} catch (e:Dynamic) { 
 		trace('Couldn\'t start onCountdownStart for Memoriam, are you in minimal mode?: ' + e); 
 		Constants.HEALTH_MIN = 0; 
@@ -75,54 +78,87 @@ class Memoriam extends ScriptedModule
 
 	try {
 	var bf = game.currentStage.getBoyfriend();
+	var dad = game.currentStage.getDad();
+
 	// copies the normal gameover and prepares the memoriam game over
-    if (game.health <= Constants.HEALTH_MIN + 1 && !inMemoriam && !game.isPracticeMode) prepareMemoriam();
-    if (inMemoriam) {
+    if (game.health <= Constants.HEALTH_MIN + 1 && !inMemoriam && !game.isPracticeMode && MemoriamOptions.memoriamOptions.data.playerMem) prepareMemoriam(bf,true);
+
+    if (inMemoriam && game.isGameOverState) {
     bf.animation.pause(); // freezes BF #1
 	game.health = 0.1;
-	}
-	if (inMemoriam && (FlxG.keys.justPressed.SPACE || FlxG.keys.justPressed.ENTER || FlxG.mouse.justPressed)) FlxG.resetState();
-    } catch (e:Dynamic) {}
+	} else if (inMemoriam) {
+	dad.animation.pause();
 	}
 
-    override function onCountdownEnd(event: CountdownScriptEvent):Void
-    { 
-	// The actual "isInCountdown" var is broken I think, so I made this
-	super.onCountdownEnd(event); 
-	new FlxTimer().start(1, function(_) { actualIsInCountDown = false; });
+	if (inMemoriam && game.isGameOverState && (FlxG.keys.justPressed.SPACE || FlxG.keys.justPressed.ENTER || FlxG.mouse.justPressed)) FlxG.resetState();
+	if (FlxG.keys.justPressed.R && !game.isPracticeMode && !inMemoriam && MemoriamOptions.memoriamOptions.data.playerMem) { 
+	Constants.HEALTH_MIN = -2;
+	prepareMemoriam(bf,true);
+	}
+    } catch (e:Dynamic) {}
 	}
 
 	override function onStateChangeBegin(event:StateChangeScriptEvent)
     {
     super.onStateChangeBegin(event);
+
 	var game = PlayState.instance;
 	if (game == null) amountOfDeaths = 0;
     }
 
-	function prepareMemoriam() {
-	var game = PlayState.instance;
-    game.health = 0.1;
+    override function onCountdownEnd(event: CountdownScriptEvent):Void
+    { 
+	super.onCountdownEnd(event); 
+
+	new FlxTimer().start(1, function(_) { actualIsInCountDown = false; });
+	}
+
+	override function onSongEnd(event:ScriptEvent):Void
+    {
+        super.onSongEnd(event);
+
+		var game = PlayState.instance;
+		var finalSong:Bool = true;
+		var dad = game.currentStage.getDad();
+
+	    if (PlayStatePlaylist.isStoryMode && PlayStatePlaylist.playlistSongIds.length > 0) finalSong = false;
+
+        if (!finalSong || inMemoriam || !MemoriamOptions.memoriamOptions.data.oppMem) return;
 	
+		event.cancel();
+		prepareMemoriam(dad,false);
+    } 
+
+	function prepareMemoriam(char:Dynamic,isBF:Bool) {
+	var game = PlayState.instance;
+	game.health = game.health + 0.1;
+
 	if (actualIsInCountDown) return; // not a good way to fix the countdown bug but it works
 
+	var missAnim = ['singLEFTmiss', 'singDOWNmiss', "singUPmiss", 'singRIGHTmiss'];
+    var missAnimPlayed = missAnim[Std.random(4)];
+
+    if (!isBF && char.hasAnimation(missAnimPlayed)) char.playAnimation(missAnimPlayed, true, true);
+	else if (!isBF) char.color = 0xd3d3d3;
+    
 	game.vocals?.pause();
     if (FlxG.sound.music != null) FlxG.sound.music.pause();
 
+	if (isBF) {
 	game.playerStrumline.clean();
     game.opponentStrumline.clean();
 	game.persistentUpdate = false;
 	game.persistentDraw = false;
 	game.isPlayerDying = true;
-	game.disableKeys = true;
 	game.isGameOverState = true;
     game.shouldSubstatePause = true;
+	}
+	game.disableKeys = true;
 
-	var bf = game.currentStage.getBoyfriend();
+	// Gets rid of any shaders that are on the char
+    char.shader = null;
 
-	// Gets rid of any shaders that are on BF
-    bf.shader = null;
-
-	// Makes BF Gray and hides the HUD
+	// Makes the char Gray and hides the HUD
 	var grayScaleShader:Grayscale = new Grayscale();
 	for (cam in [game.camGame]) cam.filters = [new ShaderFilter(grayScaleShader)];
 	for (cam in [game.camHUD]) cam.alpha = 0;
@@ -131,16 +167,16 @@ class Memoriam extends ScriptedModule
     var bg:FunkinSprite = new FunkinSprite().makeSolidColor(FlxG.width * 10, FlxG.height * 10, FlxColor.BLACK);
     bg.scrollFactor.set();
     bg.screenCenter();
-	bg.zIndex = bf.zIndex - 1;
+	bg.zIndex = char.zIndex - 1;
     game.currentStage.add(bg); 
 	game.currentStage.refresh();
 
-	// teleports bf into the void (And also hides him)
-	bf.set_x(-99999);
-	bf.alpha = 0;
+	// teleports the char into the void (And also hides them)
+	char.set_x(-99999);
+	char.alpha = 0;
 
 	// Creates Death Text
-	deathText = new FlxText(150, 200, 0, 'In Loving Memory,\n' + bf.characterName + '\n' + birthDate + ' - ' + Date.now());
+	deathText = new FlxText(150, 200, 0, 'In Loving Memory,\n' + char.characterName + '\n' + birthDate + ' - ' + Date.now());
 	deathText.setFormat(Paths.font("vcr.ttf"), 20, -1, "left", FlxTextBorderStyle.OUTLINE, 0xFF000000);
     deathText.color = FlxColor.WHITE;
 	deathText.size = 45;
@@ -148,35 +184,38 @@ class Memoriam extends ScriptedModule
 	deathText.cameras = [game.camCutscene];
     deathText.borderColor = FlxColor.BLACK;
 	deathText.borderStyle = FlxTextBorderStyle.OUTLINE;
-    game.add(deathText);
+    if (MemoriamOptions.memoriamOptions.data.deathText) game.add(deathText);
 
-    // Forces the camera to immediately head to BF's position and also disables camera tweens (The disabling code being from playstate)
-    game.cameraFollowPoint.setPosition(bf.cameraFocusPoint.x, bf.cameraFocusPoint.y);
-	try { game.resetCamera(); } catch (e:Dynamic) { trace('Couldn\'t reset and snap the camera to BF: ' + e); }
+    // Forces the camera to immediately head to the char's position and also disables camera tweens (The disabling code being from playstate)
+    game.cameraFollowPoint.setPosition(char.cameraFocusPoint.x, char.cameraFocusPoint.y);
+	try { game.resetCamera(); } catch (e:Dynamic) { trace('Couldn\'t reset and snap the camera to the char: ' + e); }
 
-    // freezes bf #2
-	try { bf.animation.finish();
-	} catch (e:Dynamic) { trace('Couldn\'t finish the current Animation: ' + e); }
-	try { bf.isDead = true; } catch (e:Dynamic) { trace('Couldn\'t set the bf.isDead variable to true: ' + e); }
+    // freezes char #2
+	try { char.animation.finish(); } catch (e:Dynamic) { trace('Couldn\'t finish the current Animation: ' + e); }
+	try { char.isDead = true; } catch (e:Dynamic) { trace('Couldn\'t set the .isDead variable to true: ' + e); }
 
 	inMemoriam = true;
 	amountOfDeaths += 1;
-	startMemoriam();
+	startMemoriam(char,isBF);
 	}
 
-	function startMemoriam() {
+	function startMemoriam(char:Dynamic,isBF:Bool) {
 	var game = PlayState.instance;
-    var bf = game.currentStage.getBoyfriend();
 
 	if (MemoriamOptions.memoriamOptions.data.mus) FunkinSound.playOnce(Paths.sound('deathMusic'));
     
-    FlxTween.tween(bf, {alpha: 1}, 5.5, {ease: FlxEase.circOut});
-    FlxTween.tween(deathText, {alpha: 1}, 5, {ease: FlxEase.circIn});
+    FlxTween.tween(char, {alpha: 1}, 5.5, {ease: FlxEase.circOut});
+    if (MemoriamOptions.memoriamOptions.data.deathText) FlxTween.tween(deathText, {alpha: 1}, 5, {ease: FlxEase.circIn});
       
-	if (MemoriamOptions.memoriamOptions.data.autoRestart) restartTimer(resetTimer);
+	if (MemoriamOptions.memoriamOptions.data.autoRestart || !isBF) restartTimer(resetTimer,isBF);
 	}
 
-	function restartTimer(timeUntiReset:Float) {
-	new FlxTimer().start(timeUntiReset, function(_) { FlxG.resetState();}); 
-	}
+	function restartTimer(timeUntiReset:Float,isBF:Bool) { 
+	var game = PlayState.instance;
+
+	new FlxTimer().start(timeUntiReset, function(_) {
+          if (isBF) FlxG.resetState();
+		  else { FunkinSound.stopAllAudio(); game.endSong(true); }
+		}); 
+    }
 }

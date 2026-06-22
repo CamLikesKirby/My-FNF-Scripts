@@ -1,13 +1,13 @@
 {
     "title": "Memoriam",
-    "description": "A funny custom death screen",
+    "description": "A funny custom death screen for the player and opponent.",
     "contributors": [
     {
       "name": "CamlikesKirby",
-      "role": "Coded the whole script"
+      "role": "Coded the whole script."
     }
   ],
     "api_version": "0.8.5",
-    "mod_version": "1.0.0",
+    "mod_version": "2.0.0",
     "license": "CC BY 4.0,MIT"
 }

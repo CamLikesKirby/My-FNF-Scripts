@@ -20,12 +20,33 @@ class MemoriamOptions extends Module
         if(Std.isOfType(event.targetState, OptionsState) && event.targetState.optionsCodex.pages.get("preferences") != null)
         {
 
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Player Memoriam', 
+            "If enabled, will play the custom memoriam game over screen when the player dies.", function(value:Bool):Void
+            {
+            memoriamOptions.data.playerMem = value;
+            memoriamOptions.flush();
+            }, memoriamOptions.data.playerMem);
+
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Opponent Memoriam', 
+            "If enabled, will play the custom memoriam game over screen for the opponent when the player beats a song/week.", function(value:Bool):Void
+            {
+            memoriamOptions.data.oppMem = value;
+            memoriamOptions.flush();
+            }, memoriamOptions.data.oppMem);
+
             event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Restart Automatically', 
             "If enabled, will make the game restart automatically on death.", function(value:Bool):Void
             {
             memoriamOptions.data.autoRestart = value;
             memoriamOptions.flush();
             }, memoriamOptions.data.autoRestart);
+
+            event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Death Text', 
+            "If enabled, the death text will fade in when you die.", function(value:Bool):Void
+            {
+            memoriamOptions.data.deathText = value;
+            memoriamOptions.flush();
+            }, memoriamOptions.data.deathText);
     
             event.targetState.optionsCodex.pages.get("preferences").createPrefItemCheckbox('Very Very Sad Music', 
             "If enabled, will play the Very Very Sad Music on death.", function(value:Bool):Void
@@ -44,12 +65,13 @@ class MemoriamOptions extends Module
         }
     }
 
-    override function onStateChangeBegin(event:StateChangeScriptEvent) { super.onStateChangeBegin(event); saveShit(); }
-
     public static function saveShit() {
     memoriamOptions.bind(Constants.SAVE_NAME + "memoriamOptions", Constants.SAVE_PATH);
     if (memoriamOptions.data.autoRestart == null) memoriamOptions.data.autoRestart = true;
+    if (memoriamOptions.data.deathText == null) memoriamOptions.data.deathText = true;
     if (memoriamOptions.data.mus == null) memoriamOptions.data.mus = true;
     if (memoriamOptions.data.timer == null) memoriamOptions.data.timer = 5.5;
+    if (memoriamOptions.data.playerMem == null) memoriamOptions.data.playerMem = true;
+    if (memoriamOptions.data.oppMem == null) memoriamOptions.data.oppMem = true;
     }
 }
